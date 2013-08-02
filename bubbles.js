@@ -18,7 +18,7 @@ $(document).ready(function () {
     var friction = 1;
     var delta_t = 0.05;
     var max_veloc = 20;
-    console.log("test!");
+
 
 
     function Circle(x, y, r, color) {
@@ -76,7 +76,7 @@ $(document).ready(function () {
         });
     }
 
-    var count = 0;
+
 
     function updateGameState() {
         if (pressed[' '.charCodeAt(0)] == true) {
