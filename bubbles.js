@@ -3,7 +3,6 @@ $(document).ready(function () {
     var body_width = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
     $('.body').height(body_height - 100);
 
-
     //Create scaled canvas element
     var vert_percent = 1;
     var horz_percent = 1;
@@ -15,67 +14,35 @@ $(document).ready(function () {
     var ctx = document.getElementById('can').getContext('2d');
     var pressed = {}; //Used for getting user inputs
     var Circle_array = [];
-    var friction = 1.1;
+    var friction = 1.0;
     var delta_t = 0.05;
     var max_veloc = 20;
-    var count = -1; //Used as a unique ID for each circle
+    var ID = -1; //Used as a unique ID for each circle
     var deletions = 0; //Used to modify the unique ID when deleting an element
-
-
-    function Circle(x, y, r, color, count) {
-        this.x = x;
-        this.y = y;
-        this.r = r;
-        this.color = color;
-	this.color.push(1);
-        this.x_veloc = 0;
-        this.y_veloc = 0;
-	this.count = count;
-
-        this.draw = function () {
-            ctx.fillStyle = 'rgba('+this.color.join(',')+')';
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.r, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.linewidth = 1;
-            ctx.fillStyle = "black";
-            ctx.stroke();
-            ctx.closePath();
-        };
-
-        this.updatePosition = function (scale) {
-	    //Update velocities
-            this.x_veloc += ((scale * Math.random()) - (scale / 2)) / this.r;
-            this.y_veloc += ((scale * Math.random()) - (scale / 2)) / this.r;
-            this.x_veloc /= friction;
-            this.y_veloc /= friction;
-            this.x_veloc = Math.min(this.x_veloc, max_veloc);
-            this.y_veloc = Math.min(this.y_veloc, max_veloc);
-	    //Update positions - make sure dot stays on canvas
-            this.x += this.x_veloc * delta_t;
-            this.y += this.y_veloc * delta_t;	    
-            if (this.x > canv_width) {
-                this.x %= canv_width;
-            } else if (this.x < 0) {
-                this.x = canv_width;
-            }
-            if (this.y > canv_height) {
-                this.y %= canv_height;
-            } else if (this.y < 0) {
-                this.y = canv_height;
-            }
-	    //Update alpha
-	    this.alpha *= .988514; //Sets half-life to about 1 second (60 frames, hopefully...)
-        };
-    }
     
-    function getRGB() {
-	return [Math.floor(Math.random()*256),Math.floor(Math.random()*256),Math.floor(Math.random()*256)];
+    function deleteElem(obj,array) {
+	console.log('Deleted object #:'+obj.ID);
+	array.splice(obj.ID-deletions,1);
+	deletions++;
     }
 
-    function deleteCircle(circle) {
-	Cirlce_array.splice(circle.count-deletions,1);
-	deletions++;
+    //Return an integer 0 to max (inclusive)
+    function getRandInt(max) { 
+	return Math.floor(Math.random()*max);
+    }
+
+    //Return a real min to max (inclusive)
+    function getUnif(min,max) {
+	return Math.random()*(max-min) + min;
+    }
+
+    //Emulate a normal distribution - this uses the central limit theorem (the more iterations, the closer to a true normal it will be)
+    function getNorm(mean,iterations) {
+	var output = 0;
+	for (i = 0; i < iterations; i++) {
+	    output += Math.random()*mean;
+	}
+	return output/iterations;
     }
 
     function setup() {
@@ -87,29 +54,78 @@ $(document).ready(function () {
         });
     }
 
+    function Circle(x, y, r, red, green, blue, ID) {
+        this.x = x;
+        this.y = y;
+        this.r = r;
+	this.color = [];
+	this.color.push(red);
+	this.color.push(green);
+	this.color.push(blue);
+	this.alpha = 1;
+        this.x_veloc = 0;
+        this.y_veloc = 0;
+	this.ID = ID;
+	this.maxAge = Math.ceil(getNorm(20*60,6)) + 600; //Age measured in frames
+	this.age = 0;
+
+        this.draw = function () {
+            ctx.fillStyle = 'rgba('+this.color.join(',')+','+this.alpha+')';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.r, 0, 2 * Math.PI);
+            ctx.fill();
+            //ctx.linewidth = 1;
+            //ctx.fillStyle = 'rgba(1,1,1,'+this.alpha+')';
+            //ctx.stroke();
+            //ctx.closePath();
+        };
+
+        this.updatePosition = function (scale) {
+	    //Update velocities
+            this.x_veloc += getUnif(-scale,scale) / this.r;
+            this.y_veloc += getUnif(-scale,scale) / this.r;
+            this.x_veloc /= friction;
+            this.y_veloc /= friction;
+            this.x_veloc = Math.min(this.x_veloc, max_veloc);
+            this.y_veloc = Math.min(this.y_veloc, max_veloc);
+	    //Update positions - make sure dot stays on canvas
+            this.x += this.x_veloc * delta_t;
+            this.y += this.y_veloc * delta_t;
+            if (this.x > canv_width) {
+                this.x %= canv_width;
+            } else if (this.x < 0) {
+                this.x = canv_width;
+            }
+            if (this.y > canv_height) {
+                this.y %= canv_height;
+            } else if (this.y < 0) {
+                this.y = canv_height;
+            }
+	    this.age++;
+	    this.alpha -= (1/this.maxAge);
+        };
+    }
+
     function updateGameState() {
         if (pressed[' '.charCodeAt(0)] == true) {
-	    count++;
-            var x = Math.random() * canv_width;
-            var y = Math.random() * canv_height;
-            var r = Math.random() * 35 + 3;
-            Circle_array.push(new Circle(x, y, r, getRGB(), count))
+	    ID++;
+            Circle_array.push(new Circle(getUnif(0,canv_width), getUnif(0,canv_height), getUnif(3,35), getRandInt(255), getRandInt(255), getRandInt(255), ID));
         }
         for (i = 0; i < Circle_array.length; i++) {
-	    Circle_array[i].updatePosition();
+	    if((Circle_array.length > 1) && (Circle_array[i].age === Circle_array[i].maxAge)) {
+	    	deleteElem(Circle_array[i],Circle_array);
+	    }
+	    else {
+		Circle_array[i].updatePosition(15);
+	    }
         }
     }
 
     function draw() {
         ctx.clearRect(0, 0, canv_width, canv_height);
-        for (i = 0; i < Circle_array.length; i++) {
-	    if(Circle_array[i].alpha < .01) {
-		deleteCircle(Circle_array[i]);
-	    }
-	    else {
-		Circle_array[i].draw();
-		console.log(Circle_array[i].color+','+Circle_array[i].count);
-	    }
+        for (i = 0; i < Circle_array.length; i++) {	    
+	    Circle_array[i].draw();
+	    console.log(Circle_array[i].color+','+Circle_array[i].age+','+Circle_array[i].maxAge);
         }
     }
 
