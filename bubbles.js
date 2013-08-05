@@ -13,6 +13,9 @@ var delta_t = 0.05;
 var ID = -1; //Used as a unique ID for each circle
 var deletions = 0; //Used to modify the unique ID when deleting an element
 
+
+
+
 //Commonly used functions:
 
 //This function should be changed!
@@ -51,6 +54,12 @@ var getSetStageSize = function (vert_percent, horz_percent) {
     canvas.height = vert_percent * (body_height - 100);
 }
 
+
+
+
+
+
+//Circle object definition:
 
     function circle(x, y, r, max_veloc, alpha, ID, color) {
         this.x = x;
@@ -128,6 +137,8 @@ circle.prototype.updatePosition = function (scale) {
 
 
 
+
+//Running the demo
 
 var setup = function () {
     document.addEventListener('keydown', function (e) {
