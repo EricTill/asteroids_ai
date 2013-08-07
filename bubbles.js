@@ -7,6 +7,9 @@ var converter = new colConvert();
 //Should be global attributes
 var friction = 1;
 var delta_t = 0.05;
+var min_alpha = 0.0001;
+var avg_lifespan = 1200; //20 seconds at 60fps
+var avg_decay = Math.pow(min_alpha,1/avg_lifespan);
 
 
 //Some thought should be given to these. They are bad. They make me feel bad.
@@ -72,15 +75,14 @@ var getSetStageSize = function (vert_percent, horz_percent) {
         this.x_veloc = 0;
         this.y_veloc = 0;
         this.ID = ID
-        this.maxAge = Math.ceil(getNorm(20 * 60, 6)) + 600; //Age measured in frames
-        this.age = 0;
-
+	this.decayRate = avg_decay + 0.01*(Math.random()-0.5);
     }
 
 
 circle.prototype.draw = function (a, b) {
-
+/*
     //----I changed this to put in fancy gaussians at the edge of each disk. To do plain disks comment out and use senction below---------//
+    var tempAlpha = 1;
     var backroundColor = converter.rgbToHSL(this.color);
     backroundColor[2] -= 0.05;
     backroundColor = converter.hslToRGB(backroundColor);
@@ -92,19 +94,21 @@ circle.prototype.draw = function (a, b) {
     ctx.closePath();
 
     for (var i = 0; i <= this.r / 3; i++) {
-        this.alpha = a * Math.pow(Math.E, -1 * (Math.pow((i - b), 2) / Math.pow((2 * (this.r / 10)), 2)));
+        tempAlpha = a * Math.pow(Math.E, -1 * (Math.pow((i - b), 2) / Math.pow((2 * (this.r / 10)), 2)));
         ctx.strokeStyle = "rgba(" + Math.floor(this.color[0]) + "," + Math.floor(this.color[1]) + "," + Math.floor(this.color[2]) + "," + this.alpha + ")";
         ctx.beginPath();
         ctx.arc(this.x, this.y, Math.floor(this.r - i), 0, 2 * Math.PI);
         ctx.stroke();
         ctx.closePath();
     }
-    //-----------------plain jane disks-------------------------//\
-    /*ctx.fillStyle =  "rgb(" + Math.floor(this.color[0]) + "," + Math.floor(this.color[1]) + "," + Math.floor(this.color[2]) +")";
-	ctx.beginPath();
-	ctx.arc(this.x, this.y, this.r-1, 0, 2 * Math.PI);
+*/
+
+    //-----------------plain jane disks-------------------------//
+    ctx.fillStyle =  "rgba(" + this.color[0] + "," + this.color[1] + "," + this.color[2] + "," + this.alpha + ")";
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r-1, 0, 2 * Math.PI);
     ctx.fill();
-    ctx.closePath();*/
+    ctx.closePath();
 };
 
 circle.prototype.updatePosition = function (scale) {
@@ -129,9 +133,7 @@ circle.prototype.updatePosition = function (scale) {
     } else if (this.y < 0) {
         this.y = canvas.height;
     };
-    this.age++;
-    this.alpha -= (1 / this.maxAge);
-
+    this.alpha = Math.max(this.alpha*this.decayRate,min_alpha) ;
 };
 
 
@@ -163,7 +165,7 @@ var updateGameState = function () {
     }
 
     for (i = 0; i < circles.length; i++) {
-        if ((circles.length > 1) && (circles[i].age === circles[i].maxAge)) {
+        if ((circles.length > 1) && (circles[i].alpha <= min_alpha)) {
             deleteElem(circles[i], circles);
         } else {
             circles[i].updatePosition(15);
