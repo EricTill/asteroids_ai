@@ -7,36 +7,43 @@ var converter = new colConvert();
 //Should be global attributes
 var friction = 1;
 var delta_t = 0.05;
-var min_alpha = 0.0001;
-var avg_lifespan = 1200; //20 seconds at 60fps
+var min_alpha = 0.1;
+var avg_lifespan = 600; //measured in frames
 var avg_decay = Math.pow(min_alpha,1/avg_lifespan);
+var border_percent = 1/3; //percent of radius used to make border
 
 
 //Some thought should be given to these. They are bad. They make me feel bad.
-var ID = -1; //Used as a unique ID for each circle
-var deletions = 0; //Used to modify the unique ID when deleting an element
+var id = -1; //Used as a unique id for each circle
+//var deletions = 0; //Used to modify the unique id when deleting an element
+
+
+
+
+
+
+
+//This function should be changed!
+function deleteElem(obj, array) {
+    //console.log('Deleted object #:' + obj.id + ', Index:' + array.indexOf(obj)  + ', # deletions:' + deletions);
+    array.splice(array.indexOf(obj),1);
+    //deletions++;
+}
+//It's a bad function!
 
 
 
 
 //Commonly used functions:
 
-//This function should be changed!
-function deleteElem(obj, array) {
-    console.log('Deleted object #:' + obj.ID);
-    array.splice(obj.ID - deletions, 1);
-    deletions++;
-}
-//It's a bad function!
-
-//Return an integer 0 to max (inclusive)
-function getRandInt(max) {
-    return Math.floor(Math.random() * max);
-}
-
 //Return a real min to max (inclusive)
 function getUnif(min, max) {
     return Math.random() * (max - min) + min;
+}
+
+//Return an integer min to max (inclusive)
+function getRandInt(min,max) {
+    return Math.round(getUnif(min,max));
 }
 
 //Emulate a normal distribution - this uses the central limit theorem (the more iterations, the closer to a true normal it will be)
@@ -64,7 +71,7 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 
 //Circle object definition:
 
-    function circle(x, y, r, max_veloc, alpha, ID, color) {
+    function circle(x, y, r, max_veloc, alpha, id, color) {
         this.x = x;
         this.y = y;
         this.r = r;
@@ -74,41 +81,41 @@ var getSetStageSize = function (vert_percent, horz_percent) {
         this.color = color;
         this.x_veloc = 0;
         this.y_veloc = 0;
-        this.ID = ID
+        this.id = id
 	this.decayRate = avg_decay + 0.01*(Math.random()-0.5);
     }
 
 
-circle.prototype.draw = function (a, b) {
-/*
-    //----I changed this to put in fancy gaussians at the edge of each disk. To do plain disks comment out and use senction below---------//
-    var tempAlpha = 1;
-    var backroundColor = converter.rgbToHSL(this.color);
-    backroundColor[2] -= 0.05;
-    backroundColor = converter.hslToRGB(backroundColor);
+circle.prototype.draw = function () {
 
-    ctx.fillStyle = "rgba(" + Math.floor(backroundColor[0]) + "," + Math.floor(backroundColor[1]) + "," + Math.floor(backroundColor[2]) + "," + this.alpha + ")";
+    //----Disks with shaded edges----//
+    var inner_r = Math.ceil(this.r*(1-border_percent));
+    ctx.fillStyle = "rgba(" + this.color[0] + "," + this.color[1] + "," + this.color[2] + "," + this.alpha + ")";
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r - 1, 0, 2 * Math.PI);
+    ctx.arc(this.x, this.y, this.r, 0, 2 * Math.PI);
     ctx.fill();
     ctx.closePath();
 
-    for (var i = 0; i <= this.r / 3; i++) {
-        tempAlpha = a * Math.pow(Math.E, -1 * (Math.pow((i - b), 2) / Math.pow((2 * (this.r / 10)), 2)));
-        ctx.strokeStyle = "rgba(" + Math.floor(this.color[0]) + "," + Math.floor(this.color[1]) + "," + Math.floor(this.color[2]) + "," + this.alpha + ")";
+    var temp_alpha = 1;
+    var rho = Math.pow(this.alpha,(1/(this.r*border_percent)));
+    for (var i = 0; i <= this.r-1; i++) {
+        temp_alpha *= rho;
+        ctx.strokeStyle = "rgba(" + this.color[0] + "," + this.color[1] + "," + this.color[2] + "," + temp_alpha + ")";
         ctx.beginPath();
-        ctx.arc(this.x, this.y, Math.floor(this.r - i), 0, 2 * Math.PI);
+        ctx.arc(this.x, this.y, this.r - i, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.closePath();
     }
-*/
 
-    //-----------------plain jane disks-------------------------//
+
+/*
+    //----Plain jane disks----//
     ctx.fillStyle =  "rgba(" + this.color[0] + "," + this.color[1] + "," + this.color[2] + "," + this.alpha + ")";
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.r-1, 0, 2 * Math.PI);
     ctx.fill();
     ctx.closePath();
+*/
 };
 
 circle.prototype.updatePosition = function (scale) {
@@ -154,14 +161,14 @@ var setup = function () {
 
 var updateGameState = function () {
     if (pressed[' '.charCodeAt(0)] == true) {
-        ID++;
-        var x = Math.random() * canvas.width;
-        var y = Math.random() * canvas.height;
-        var r = Math.random() * 35 + 3;
+        id++;
+        var x = getUnif(0,canvas.width);
+        var y = getUnif(0,canvas.height);
+        var r = getRandInt(3,35);
         //console.log(x + " " + y);
         //var color = "rgb(" + Math.floor(Math.random() * 256) + "," + Math.floor(Math.random() * 256) + "," + Math.floor(Math.random() * 256) + ")";
-        var color = [getRandInt(255), getRandInt(255), getRandInt(255)]
-        circles.push(new circle(x, y, r, 20, 1, ID, color))
+        var color = [getRandInt(0,255), getRandInt(0,255), getRandInt(0,255)]
+        circles.push(new circle(x, y, r, 20, 1, id, color))
     }
 
     for (i = 0; i < circles.length; i++) {
@@ -169,7 +176,7 @@ var updateGameState = function () {
             deleteElem(circles[i], circles);
         } else {
             circles[i].updatePosition(15);
-            circles[i].draw(0.5, 0.5);
+            circles[i].draw();
         };
     }
 }
