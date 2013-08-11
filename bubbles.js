@@ -17,7 +17,6 @@ var id = -1; //Used as a unique id for each circle
 
 
 
-
 //This function should be changed!
 function deleteElem(obj, array) {
     //console.log('Deleted object #:' + obj.id + ', Index:' + array.indexOf(obj)  + ', # deletions:' + deletions);
@@ -77,11 +76,8 @@ function circle(x, y, r, max_veloc, alpha, id, color) {
     this.id = id
     
     //Randomly generate verticies for craggy-looking asteroid shapes
-    this.num_verts = getRandInt(9,Math.max(10,Math.round(this.r/2.5)));
-    this.generateVerts(); //creates this.verts[num_verticies][2] - for each vertex there's a theta and an r-offset
-}
-
-circle.prototype.generateVerts = function () {
+    //Start with randomly generated r and theta pairs
+    this.num_verts = 2*getRandInt(6,9);
     this.thetas = new Array(this.num_verts);
     var scale = ((2*Math.PI)/this.num_verts);
     for(i=0; i<this.num_verts; i++){
@@ -90,56 +86,38 @@ circle.prototype.generateVerts = function () {
     this.thetas.sort();
     this.r_offsets = new Array(this.num_verts);
     for(i=0; i<this.num_verts; i++){
-	this.r_offsets[i] = getUnif(-this.r/8,this.r/8);
+	this.r_offsets[i] = getUnif(-this.r/5,this.r/5);
     }
-};
+    this.thetas[this.num_verts] = this.thetas[0];
+    this.thetas[this.num_verts] = this.thetas[0];
+    //Convert them into cartesian offsets
+    this.x_adds = [];
+    this.y_adds = [];
+    for(i=0; i<this.num_verts+1; i++){
+	this.x_adds[i] = (this.r + this.r_offsets[i]) * Math.cos(this.thetas[i]);
+	this.y_adds[i] = (this.r + this.r_offsets[i]) * Math.sin(this.thetas[i]);
+    }
+}
 
 circle.prototype.draw = function () {
-    
+
     //----Asteriod circles----//
     ctx.strokeStyle = "#ffffff";
-    ctx.fillStyle = "rgba(" + this.color[0] + "," + this.color[1] + "," + this.color[2] + "," + this.alpha + ")";
     ctx.lineWidth = 1;
-    
-    //ctx.beginPath();
-    //ctx.arc(500,500,20,0,2*Math.PI);
-    //ctx.fill();
-    //ctx.closePath();
+    console.log('Drawing:'+this.id);
 
-    //First get a set of easy drawing instructions - a vector of x and y values representing where the verticies actually are
-    var xs = [];
-    var ys = [];
-    for(i=0; i<this.num_verts; i++){
-    	xs[i] = this.x + (this.r + this.r_offsets[i]) * Math.cos(this.thetas[i]);
-    	ys[i] = this.y + (this.r + this.r_offsets[i]) * Math.sin(this.thetas[i]);
-    	console.log(this.x+', '+xs[i]);
-    }
-    xs.push(xs[0]);
-    ys.push(ys[0]);
-    
-    for(i=0; i<this.num_verts; i++){
-    	//ctx.beginPath();
-    	//ctx.arc(xs[i], ys[i], 20, 0, 2 * Math.PI);
-    	//ctx.fill();
-    	//ctx.closePath();
-    	
-    	ctx.beginPath();
-    	ctx.moveTo(xs[i], ys[i]);
-    	ctx.lineTo(xs[i+1],ys[i+1]);
-    	ctx.stroke();                                 
-    }
-    
-/*
-    //----Plain jane disks----//
-    ctx.fillStyle =  "rgba(" + this.color[0] + "," + this.color[1] + "," + this.color[2] + "," + this.alpha + ")";
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r-1, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.closePath();
-*/
+    for(var i=0; i<this.num_verts; i++){
+    	ctx.moveTo(this.x + this.x_adds[i], this.y + this.y_adds[i]);
+    	ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
+	console.log('Side: '+i+' of '+this.num_verts);
+    }
+    ctx.stroke();
+    //ctx.closePath();
 };
 
 circle.prototype.updatePosition = function (scale) {
+    console.log('Update position:'+this.id);
     this.x_veloc += getUnif(-scale, scale) / this.r;
     this.y_veloc += getUnif(-scale, scale) / this.r;
     this.x_veloc /= friction;
@@ -186,16 +164,15 @@ var updateGameState = function () {
         var x = getUnif(0,canvas.width);
         var y = getUnif(0,canvas.height);
         var r = getUnif(20,50);
-        //console.log(x + " " + y);
-        //var color = "rgb(" + Math.floor(Math.random() * 256) + "," + Math.floor(Math.random() * 256) + "," + Math.floor(Math.random() * 256) + ")";
-        var color = [1, 1, 1]
-        circles.push(new circle(x, y, r, 20, 1, id, color))
+        var color = [1, 1, 1];
+        circles.push(new circle(x, y, r, 20, 1, id, color));
     }
 
-    for (i = 0; i < circles.length; i++) {
+    for (var i = 0; i < circles.length; i++) {
+	console.log('Loop elem:'+i+' (circle number):'+circles[i].id+' of num elements:'+circles.length);
         circles[i].updatePosition(15);
         circles[i].draw();
-    };
+    }
 }
 
 
