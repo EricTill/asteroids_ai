@@ -58,10 +58,9 @@ function getNorm(mean, iterations) {
 var getSetStageSize = function (vert_percent, horz_percent) {
     var body_height = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
     var body_width = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
-    $('.body').height(body_height - 100); //we could probably due without this line at some point, but I dont want to really go through the css file.
 
     canvas.width = horz_percent * body_width;
-    canvas.height = vert_percent * (body_height - 100);
+    canvas.height = vert_percent * body_height;
 }
 
 

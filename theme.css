@@ -1,65 +1,11 @@
-/* Style of page knocked off from http://nodejs.org/ */
-
-
 body {
     padding:0;
     margin:0;
     width:100%;
-    background-color:rgb(51,52,45);
     position:absolute;
-    text-align:center;
-    color:rgb(210,216,186);
-    font-family:"Lucida Sans Unicode";
-    font-size:12px;
-}
-
-.header {
-    height:100px;
-    width:100%;
-    background-color:rgb(70,72,62);
-    clear:both;
-    color:rgb(139,200,75);
-    text-align:center;
-    position:fixed;
-    font-family:"Lucida Sans Unicode";
-    font-size:15px;
-    line-height:70px;
-}
-
-.body {
-    top:100px;
-    width:100%;
-    background-color:rgb(51,52,45);
-    position:absolute;
-    text-align:center;
-    color:rgb(210,216,186);
-    font-family:"Lucida Sans Unicode";
-    font-size:12px;
-}
-
-
-#mybutton {
-    background-color:rgb(139,200,75);
-    height:50px;
-    width:100px;
-    margin:0 auto 0 auto;
-    overflow:hidden;
-    line-height:50px;
-    text-transform:uppercase;
-    font-weight:bold;
-    color:rgb(70,72,62);
-    border-radius:5px;
-    font-family:Helvetica;
-    transition:all 0.2s ease-in-out 0s;
-}
-
-#mybutton:hover {
-    background-color:rgb(115,165,62);
-    cursor:pointer;
 }
 
 canvas {
-    margin-top: 100px;
-    /*border:1px dashed black;*/
+    background-color:black;
 }
 
