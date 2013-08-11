@@ -14,18 +14,11 @@ var id = -1; //Used as a unique id for each circle
 
 
 
-
-
-
 //This function should be changed!
 function deleteElem(obj, array) {
-    //console.log('Deleted object #:' + obj.id + ', Index:' + array.indexOf(obj)  + ', # deletions:' + deletions);
     array.splice(array.indexOf(obj),1);
-    //deletions++;
 }
 //It's a bad function!
-
-
 
 
 //Commonly used functions:
@@ -58,10 +51,6 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 }
 
 
-
-
-
-
 //Circle object definition:
 
 function circle(x, y, r, max_veloc, alpha, id, color) {
@@ -88,15 +77,17 @@ function circle(x, y, r, max_veloc, alpha, id, color) {
     for(i=0; i<this.num_verts; i++){
 	this.r_offsets[i] = getUnif(-this.r/5,this.r/5);
     }
-    this.thetas[this.num_verts] = this.thetas[0];
-    this.thetas[this.num_verts] = this.thetas[0];
+    //this.thetas[this.num_verts] = this.thetas[0];
+    //this.thetas[this.num_verts] = this.thetas[0];
     //Convert them into cartesian offsets
     this.x_adds = [];
     this.y_adds = [];
-    for(i=0; i<this.num_verts+1; i++){
+    for(i=0; i<this.num_verts; i++){
 	this.x_adds[i] = (this.r + this.r_offsets[i]) * Math.cos(this.thetas[i]);
 	this.y_adds[i] = (this.r + this.r_offsets[i]) * Math.sin(this.thetas[i]);
     }
+    this.x_adds[this.num_verts] = this.x_adds[0];
+    this.y_adds[this.num_verts] = this.y_adds[0];
 }
 
 circle.prototype.draw = function () {
@@ -104,20 +95,15 @@ circle.prototype.draw = function () {
     //----Asteriod circles----//
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1;
-    console.log('Drawing:'+this.id);
-
     ctx.beginPath();
     for(var i=0; i<this.num_verts; i++){
     	ctx.moveTo(this.x + this.x_adds[i], this.y + this.y_adds[i]);
     	ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
-	console.log('Side: '+i+' of '+this.num_verts);
     }
     ctx.stroke();
-    //ctx.closePath();
 };
 
 circle.prototype.updatePosition = function (scale) {
-    console.log('Update position:'+this.id);
     this.x_veloc += getUnif(-scale, scale) / this.r;
     this.y_veloc += getUnif(-scale, scale) / this.r;
     this.x_veloc /= friction;
@@ -143,10 +129,6 @@ circle.prototype.updatePosition = function (scale) {
 
 
 
-
-
-
-
 //Running the demo
 
 var setup = function () {
@@ -169,7 +151,6 @@ var updateGameState = function () {
     }
 
     for (var i = 0; i < circles.length; i++) {
-	console.log('Loop elem:'+i+' (circle number):'+circles[i].id+' of num elements:'+circles.length);
         circles[i].updatePosition(15);
         circles[i].draw();
     }
