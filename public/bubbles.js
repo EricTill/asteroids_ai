@@ -2,9 +2,9 @@ var canvas = document.getElementById('can');
 var ctx = canvas.getContext('2d');
 var pressed = {};
 var circles = [];
+var touched = false;
 
 //Should be global attributes
-var friction = 1;
 var delta_t = 0.05;
 
 
@@ -52,7 +52,6 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 
 
 //Circle object definition:
-
 function circle(x, y, r, max_veloc, alpha, id, color) {
     this.x = x;
     this.y = y;
@@ -63,6 +62,7 @@ function circle(x, y, r, max_veloc, alpha, id, color) {
     this.x_veloc = getUnif(-1,1);
     this.y_veloc = getUnif(-1,1);
     this.id = id
+    this.friction = 1;
     
     //Randomly generate verticies for craggy-looking asteroid shapes
     //Start with randomly generated r and theta pairs
@@ -96,8 +96,8 @@ circle.prototype.draw = function () {
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1;
     ctx.beginPath();
+    ctx.moveTo(this.x + this.x_adds[0], this.y + this.y_adds[0]);
     for(var i=0; i<this.num_verts; i++){
-    	ctx.moveTo(this.x + this.x_adds[i], this.y + this.y_adds[i]);
     	ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
     }
     ctx.stroke();
@@ -106,8 +106,8 @@ circle.prototype.draw = function () {
 circle.prototype.updatePosition = function (scale) {
     this.x_veloc += getUnif(-scale, scale) / this.r;
     this.y_veloc += getUnif(-scale, scale) / this.r;
-    this.x_veloc /= friction;
-    this.y_veloc /= friction;
+    this.x_veloc /= this.friction;
+    this.y_veloc /= this.friction;
     this.x_veloc = Math.min(this.x_veloc, this.max_veloc);
     this.y_veloc = Math.min(this.y_veloc, this.max_veloc);
     //Update positions - make sure dot stays on canvas
@@ -138,10 +138,17 @@ var setup = function () {
     document.addEventListener('keyup', function (e) {
         pressed[e.keyCode] = false;
     });
+    document.addEventListener('touchstart', function () {
+	touched = true;
+    });
+    document.addEventListener('touchend', function () {
+	touched = false;
+    });
 }
 
+
 var updateGameState = function () {
-    if (pressed[' '.charCodeAt(0)] == true) {
+    if (pressed[' '.charCodeAt(0)] == true || touched) {
         id++;
         var x = getUnif(0,canvas.width);
         var y = getUnif(0,canvas.height);

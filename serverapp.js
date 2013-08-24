@@ -10,3 +10,4 @@ app.all('*', function(req,res){
 });
 
 http.createServer(app).listen(8000);
+console.log('Localhost listening on port 8000');
