@@ -1,7 +1,7 @@
 var canvas = document.getElementById('can');
 var ctx = canvas.getContext('2d');
 var pressed = {};
-var circles = [];
+var asteroids = [];
 var touched = false;
 
 //Should be global attributes
@@ -9,7 +9,7 @@ var delta_t = 0.05;
 
 
 //Some thought should be given to these. They are bad. They make me feel bad.
-var id = -1; //Used as a unique id for each circle
+var id = -1; //Used as a unique id for each asteroid
 //var deletions = 0; //Used to modify the unique id when deleting an element
 
 
@@ -51,18 +51,23 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 }
 
 
-//Circle object definition:
-function circle(x, y, r, max_veloc, alpha, id, color) {
+//Asteroid object definition:
+function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.x = x;
     this.y = y;
     this.r = r;
     this.max_veloc = max_veloc;
     this.alpha = 0;
     this.color = color;
-    this.x_veloc = getUnif(-1,1);
-    this.y_veloc = getUnif(-1,1);
+    this.x_veloc = 10*getUnif(-1,1);
+    this.y_veloc = 10*getUnif(-1,1);
     this.id = id
     this.friction = 1;
+    //this.max_x = 0;
+    //this.max_y = 0;
+    //this.min_x = 0;
+    //this.min_y = 0;
+    //this.quadrants = [false, false, false, false]; //top right, bottom right, bottom left, top left quadrants
     
     //Randomly generate verticies for craggy-looking asteroid shapes
     //Start with randomly generated r and theta pairs
@@ -88,11 +93,11 @@ function circle(x, y, r, max_veloc, alpha, id, color) {
     }
     this.x_adds[this.num_verts] = this.x_adds[0];
     this.y_adds[this.num_verts] = this.y_adds[0];
+    this.max_x = Math.max.apply(Math,this.x_adds);
+    this.max_y = Math.max.apply(Math,this.y_adds);
 }
 
-circle.prototype.draw = function () {
-
-    //----Asteriod circles----//
+asteroid.prototype.draw = function () {
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -103,17 +108,29 @@ circle.prototype.draw = function () {
     ctx.stroke();
 };
 
-circle.prototype.updatePosition = function (scale) {
-    this.x_veloc += getUnif(-scale, scale) / this.r;
-    this.y_veloc += getUnif(-scale, scale) / this.r;
-    this.x_veloc /= this.friction;
-    this.y_veloc /= this.friction;
-    this.x_veloc = Math.min(this.x_veloc, this.max_veloc);
-    this.y_veloc = Math.min(this.y_veloc, this.max_veloc);
+asteroid.prototype.updatePosition = function (scale) {
+    //Calculate position
+    //this.x_veloc += getUnif(-scale, scale) / this.r;
+    //this.y_veloc += getUnif(-scale, scale) / this.r;
+    //this.x_veloc /= this.friction;
+    //this.y_veloc /= this.friction;
+    //this.x_veloc = Math.min(this.x_veloc, this.max_veloc);
+    //this.y_veloc = Math.min(this.y_veloc, this.max_veloc);
     //Update positions - make sure dot stays on canvas
     this.x += this.x_veloc * delta_t;
     this.y += this.y_veloc * delta_t;
 
+    //Location related
+    //this.max_y = this.y + this.max_y;
+    //this.max_x = this.x + this.max_x;
+    //this.min_y = this.y - this.max_y;
+    //this.min_x = this.x - this.max_x;
+    //this.quadrants[0] = ((this.max_y > canvas.height/2) && (this.max_x > canvas.width));
+    //this.quadrants[1] = 
+    //this.quadrants[2] = 
+    //this.quadrants[3] = 
+
+    //Collision detection
     if (this.x > canvas.width) {
         this.x %= canvas.width;
     } else if (this.x < 0) {
@@ -154,12 +171,12 @@ var updateGameState = function () {
         var y = getUnif(0,canvas.height);
         var r = getUnif(20,50);
         var color = [1, 1, 1];
-        circles.push(new circle(x, y, r, 20, 1, id, color));
+        asteroids.push(new asteroid(x, y, r, 20, 1, id, color));
     }
 
-    for (var i = 0; i < circles.length; i++) {
-        circles[i].updatePosition(15);
-        circles[i].draw();
+    for (var i = 0; i < asteroids.length; i++) {
+        asteroids[i].updatePosition(15);
+        asteroids[i].draw();
     }
 }
 
