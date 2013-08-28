@@ -6,7 +6,7 @@ var express = require('express'),
 app.use(express.static(path.join(__dirname,'public')));
 
 app.all('*', function(req,res){
-    res.sendfile('public/bubbles.html')
+    res.sendfile('public/asteroids.html')
 });
 
 http.createServer(app).listen(8000);
