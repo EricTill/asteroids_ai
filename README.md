@@ -1,4 +1,5 @@
-bubbles
-=======
+Asteroids
 
-A nice field of bubbles which float around the screen - would eventually like a nice background effect and a vector-field based version (instead of each bubble having it's own randomly determined velocity)
+A complete rip off of the game of asteroids.
+
+The server application requires node.js - install and run with node serverapp.js and connect to that IP by entering your (local) address into the adress bar of a browser on the same local network.
