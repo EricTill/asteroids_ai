@@ -8,14 +8,14 @@ var touched = false;
 var delta_t = 0.05;
 
 
+
 //Some thought should be given to these. They are bad. They make me feel bad.
 var id = -1; //Used as a unique id for each asteroid
 //var deletions = 0; //Used to modify the unique id when deleting an element
 
 
-
 //This function should be changed!
-function deleteElem(obj, array) {
+var deleteElem = function(obj, array) {
     array.splice(array.indexOf(obj),1);
 }
 //It's a bad function!
@@ -24,27 +24,32 @@ function deleteElem(obj, array) {
 //Commonly used functions:
 
 //Return a real min to max (inclusive)
-function getUnif(min, max) {
+var getUnif = function(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+
 //Return an integer min to max (inclusive)
-function getRandInt(min,max) {
+var getRandInt = function(min,max) {
     return Math.round(getUnif(min,max));
 }
 
+
 //Emulate a normal distribution - this uses the central limit theorem (the more iterations, the closer to a true normal it will be)
-function getNorm(mean, iterations) {
+var getNorm = function(mean, iterations) {
     var output = 0;
-    for (i = 0; i < iterations; i++) {
+    for (var i = 0; i < iterations; i++) {
         output += Math.random() * mean;
     }
     return output / iterations;
 }
 
+//Runs every frame to adjust to resizing windows
+var body_height;
+var body_width;
 var getSetStageSize = function (vert_percent, horz_percent) {
-    var body_height = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
-    var body_width = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
+    body_height = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
+    body_width = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
     canvas.width = horz_percent * body_width;
     canvas.height = vert_percent * body_height;
@@ -74,12 +79,12 @@ function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.num_verts = 2*getRandInt(6,9);
     this.thetas = new Array(this.num_verts);
     var scale = ((2*Math.PI)/this.num_verts);
-    for(i=0; i<this.num_verts; i++){
+    for(var i = 0; i<this.num_verts; i++){
 	this.thetas[i] = i*scale + getUnif(-scale/3,scale/3);
     }
     this.thetas.sort();
     this.r_offsets = new Array(this.num_verts);
-    for(i=0; i<this.num_verts; i++){
+    for(var i = 0; i<this.num_verts; i++){
 	this.r_offsets[i] = getUnif(-this.r/5,this.r/5);
     }
     //this.thetas[this.num_verts] = this.thetas[0];
@@ -87,7 +92,7 @@ function asteroid(x, y, r, max_veloc, alpha, id, color) {
     //Convert them into cartesian offsets
     this.x_adds = [];
     this.y_adds = [];
-    for(i=0; i<this.num_verts; i++){
+    for(var i = 0; i<this.num_verts; i++){
 	this.x_adds[i] = (this.r + this.r_offsets[i]) * Math.cos(this.thetas[i]);
 	this.y_adds[i] = (this.r + this.r_offsets[i]) * Math.sin(this.thetas[i]);
     }
@@ -97,6 +102,7 @@ function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.max_y = Math.max.apply(Math,this.y_adds);
 }
 
+//Asteroid draw function
 asteroid.prototype.draw = function () {
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1;
@@ -108,6 +114,7 @@ asteroid.prototype.draw = function () {
     ctx.stroke();
 };
 
+//Updates the position of an asteroid
 asteroid.prototype.updatePosition = function (scale) {
     //Calculate position
     //this.x_veloc += getUnif(-scale, scale) / this.r;
@@ -144,10 +151,7 @@ asteroid.prototype.updatePosition = function (scale) {
     };
 };
 
-
-
-//Running the demo
-
+//Creates the controler events
 var setup = function () {
     document.addEventListener('keydown', function (e) {
         pressed[e.keyCode] = true;
@@ -164,13 +168,17 @@ var setup = function () {
 }
 
 
+var x;
+var y;
+var r;
+var color;
 var updateGameState = function () {
     if (pressed[' '.charCodeAt(0)] == true || touched) {
         id++;
-        var x = getUnif(0,canvas.width);
-        var y = getUnif(0,canvas.height);
-        var r = getUnif(20,50);
-        var color = [1, 1, 1];
+        x = getUnif(0,canvas.width);
+        y = getUnif(0,canvas.height);
+        r = getUnif(20,50);
+        color = [1, 1, 1];
         asteroids.push(new asteroid(x, y, r, 20, 1, id, color));
     }
 
@@ -180,7 +188,7 @@ var updateGameState = function () {
     }
 }
 
-
+//Main loop
 var gameLoop = function () {
     getSetStageSize(1, 1);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -189,13 +197,21 @@ var gameLoop = function () {
 }
 
 
-window.requestAnimFrame = (function () {
-    return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) {
+window.requestAnimFrame = (
+    window.requestAnimationFrame || 
+    window.webkitRequestAnimationFrame || 
+    window.mozRequestAnimationFrame || 
+    function (callback) {
         window.setTimeout(callback, 1000 / 60);
-    };
-})();
+    }
+);
 
-$(document).ready(function () {
-    setup();
-    window.requestAnimFrame(gameLoop);
-});
+//Old style of calling requestAnimationFrame... not really sure which is best, honestly
+//window.requestAnimFrame = (function () {
+//    return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) {
+//        window.setTimeout(callback, 1000 / 60);
+//    };
+//})();
+
+setup();
+window.requestAnimFrame(gameLoop);
