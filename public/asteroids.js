@@ -56,6 +56,33 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 }
 
 
+//Polygon parent class for every visible object in the game (asteroids, shots and player)
+//This class should handle all collision detection and drawing functions
+function polygon (x,y,x_adds,y_adds) {
+    
+    //Position information
+    this.x = x;
+    this.y = y;
+    this.x_adds = x_adds;
+    this.y_adds = y_adds;
+
+}
+
+polygon.prototype.draw = function () {
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(this.x + this.x_adds[0], this.y + this.y_adds[0]);
+    for(var i=0; i<this.num_verts; i++){
+    	ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
+    }
+    ctx.stroke();
+    
+}
+
+
+
 //Asteroid object definition:
 function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.x = x;
