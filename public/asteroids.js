@@ -3,10 +3,10 @@ var ctx = canvas.getContext('2d');
 var pressed = {};
 var asteroids = [];
 var touched = false;
+var pi = Math.PI;
 
 //Should be global attributes
 var delta_t = 0.05;
-
 
 
 //Some thought should be given to these. They are bad. They make me feel bad.
@@ -58,18 +58,53 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 
 //Polygon parent class for every visible object in the game (asteroids, shots and player)
 //This class should handle all collision detection and drawing functions
-function polygon (x,y,x_adds,y_adds) {
-    
-    //Position information
+
+
+function player(x,y) {
     this.x = x;
     this.y = y;
-    this.x_adds = x_adds;
-    this.y_adds = y_adds;
-
+    this.x_adds = [];
+    this.y_adds = [];
+    this.x_shape = [14, -21, -14, -21, 14];
+    this.y_shape = [0, -7, 0, 7, 0];
+    this.num_verts = 4;
+    this.color = [1, 1, 1];
+    this.dx = 0;
+    this.dy = 0;
+    this.theta = -pi/2;
+    this.max_veloc = .05;
 }
 
-polygon.prototype.draw = function () {
+player.prototype.move = function(accel,dtheta) {
+    this.theta += dtheta;
+    this.theta %= 2 * pi;
+    this.dx += Math.min(accel * Math.cos(this.theta),this.max_veloc);
+    this.dy += Math.min(accel * Math.sin(this.theta),this.max_veloc);
+}
 
+player.prototype.updatePosition = function() {
+    this.x += this.dx;
+    this.y += this.dy;
+    for(var i = 0; i < this.num_verts + 1; i++) {
+	this.x_adds[i] = this.x_shape[i] * Math.cos(this.theta) - this.y_shape[i] * Math.sin(this.theta);
+	this.y_adds[i] = this.x_shape[i] * Math.sin(this.theta) + this.y_shape[i] * Math.cos(this.theta);
+    }
+
+    if (this.x > canvas.width) {
+        this.x %= canvas.width;
+    } else if (this.x < 0) {
+        this.x = canvas.width;
+    };
+
+    if (this.y > canvas.height) {
+        this.y %= canvas.height;
+    } else if (this.y < 0) {
+        this.y = canvas.height;
+    };
+}
+
+player.prototype.draw = function () {
+    //console.log( 'drawing' );
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -80,8 +115,6 @@ polygon.prototype.draw = function () {
     ctx.stroke();
     
 }
-
-
 
 //Asteroid object definition:
 function asteroid(x, y, r, max_veloc, alpha, id, color) {
@@ -105,7 +138,7 @@ function asteroid(x, y, r, max_veloc, alpha, id, color) {
     //Start with randomly generated r and theta pairs
     this.num_verts = 2*getRandInt(6,9);
     this.thetas = new Array(this.num_verts);
-    var scale = ((2*Math.PI)/this.num_verts);
+    var scale = ((2*pi)/this.num_verts);
     for(var i = 0; i<this.num_verts; i++){
 	this.thetas[i] = i*scale + getUnif(-scale/3,scale/3);
     }
@@ -128,6 +161,7 @@ function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.max_x = Math.max.apply(Math,this.x_adds);
     this.max_y = Math.max.apply(Math,this.y_adds);
 }
+
 
 //Asteroid draw function
 asteroid.prototype.draw = function () {
@@ -199,6 +233,12 @@ var x;
 var y;
 var r;
 var color;
+var up;
+var down;
+var left;
+var right;
+getSetStageSize(1, 1);
+var p = new player(canvas.width/2,canvas.height/2);
 var updateGameState = function () {
     if (pressed[' '.charCodeAt(0)] == true || touched) {
         id++;
@@ -208,6 +248,15 @@ var updateGameState = function () {
         color = [1, 1, 1];
         asteroids.push(new asteroid(x, y, r, 20, 1, id, color));
     }
+    
+    up = pressed[38] ? 1 : 0;
+    down = pressed[40] ? 1 : 0;
+    left = pressed[37] ? 1 : 0;
+    right = pressed[39] ? 1 : 0;
+
+    p.move(0.1 * (up - down), (pi/50) * (left - right));    
+    p.updatePosition();
+    p.draw();
 
     for (var i = 0; i < asteroids.length; i++) {
         asteroids[i].updatePosition(15);

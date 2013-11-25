@@ -7,7 +7,7 @@ app.use(express.static(path.join(__dirname,'public')));
 
 app.all('*', function(req,res){
     console.log('Connection attempt');
-    res.sendfile('public/asteroids.html');
+    res.sendfile('public/index.html');
 });
 
 http.createServer(app).listen(8000);
