@@ -2,6 +2,7 @@ var canvas = document.getElementById('can');
 var ctx = canvas.getContext('2d');
 var pressed = {};
 var asteroids = [];
+var bullets = [];
 var touched = false;
 var pi = Math.PI;
 
@@ -65,21 +66,25 @@ function player(x,y) {
     this.y = y;
     this.x_adds = [];
     this.y_adds = [];
-    this.x_shape = [14, -21, -14, -21, 14];
+    this.x_shape = [14, -14, -7, -14, 14];
     this.y_shape = [0, -7, 0, 7, 0];
     this.num_verts = 4;
     this.color = [1, 1, 1];
     this.dx = 0;
     this.dy = 0;
     this.theta = -pi/2;
-    this.max_veloc = .05;
+    this.max_veloc = 7;
 }
 
 player.prototype.move = function(accel,dtheta) {
     this.theta += dtheta;
     this.theta %= 2 * pi;
-    this.dx += Math.min(accel * Math.cos(this.theta),this.max_veloc);
-    this.dy += Math.min(accel * Math.sin(this.theta),this.max_veloc);
+    this.dx += accel * Math.cos(this.theta);
+    this.dy += accel * Math.sin(this.theta);
+    this.dx = Math.min(this.dx,this.max_veloc);
+    this.dx = Math.max(this.dx,-this.max_veloc);
+    this.dy = Math.min(this.dy,this.max_veloc);
+    this.dy = Math.max(this.dy,-this.max_veloc);
 }
 
 player.prototype.updatePosition = function() {
@@ -106,15 +111,72 @@ player.prototype.updatePosition = function() {
 player.prototype.draw = function () {
     //console.log( 'drawing' );
     ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(this.x + this.x_adds[0], this.y + this.y_adds[0]);
     for(var i=0; i<this.num_verts; i++){
     	ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
     }
     ctx.stroke();
-    
+    ctx.lineWidth = 1;
 }
+
+player.prototype.displayVeloc = function () {
+    ctx.strokeStyle = "#FF0000";
+    ctx.beginPath();
+    ctx.moveTo(this.x,this.y);
+    ctx.lineTo(this.x + 8*this.dx,this.y + 8*this.dy);
+    ctx.stroke();
+}
+
+player.prototype.shoot = function() {
+    var vx;
+    var vy;
+    var speed = Math.sqrt(Math.pow(this.dx,2),Math.pow(this.dy,2));
+    if (speed >= 1) {
+	vx = (speed + 2/Math.abs(this.dx)) * Math.cos(this.theta) + this.dx;
+	vy = (speed + 2/Math.abs(this.dx)) * Math.sin(this.theta) + this.dy;
+    } else {
+	vx = (speed + 3) * Math.cos(this.theta);
+	vy = (speed + 3) * Math.sin(this.theta);
+    };
+
+    bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1,vx,vy));
+}
+
+function bullet(x,y,r,dx,dy) {
+    this.x = x;
+    this.y = y;
+    this.r = r;
+    this.dx = dx;
+    this.dy = dy;
+}
+
+bullet.prototype.updatePosition = function() {
+    this.x += this.dx;
+    this.y += this.dy;
+
+    if (this.x > canvas.width) {
+        this.x %= canvas.width;
+    } else if (this.x < 0) {
+        this.x = canvas.width;
+    };
+
+    if (this.y > canvas.height) {
+        this.y %= canvas.height;
+    } else if (this.y < 0) {
+        this.y = canvas.height;
+    };
+}
+
+bullet.prototype.draw = function () {
+    ctx.fillStyle = "#ffffff";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(this.x,this.y,this.r,0,2*pi);
+    ctx.fill();
+}
+
 
 //Asteroid object definition:
 function asteroid(x, y, r, max_veloc, alpha, id, color) {
@@ -240,7 +302,7 @@ var right;
 getSetStageSize(1, 1);
 var p = new player(canvas.width/2,canvas.height/2);
 var updateGameState = function () {
-    if (pressed[' '.charCodeAt(0)] == true || touched) {
+    if (pressed['A'.charCodeAt(0)] == true || touched) {
         id++;
         x = getUnif(0,canvas.width);
         y = getUnif(0,canvas.height);
@@ -248,20 +310,36 @@ var updateGameState = function () {
         color = [1, 1, 1];
         asteroids.push(new asteroid(x, y, r, 20, 1, id, color));
     }
+
+    if (pressed[' '.charCodeAt(0)] == true) {
+	p.shoot();
+    }
     
     up = pressed[38] ? 1 : 0;
     down = pressed[40] ? 1 : 0;
     left = pressed[37] ? 1 : 0;
     right = pressed[39] ? 1 : 0;
 
-    p.move(0.1 * (up - down), (pi/50) * (left - right));    
+    p.move(0.1 * (up - down), (pi/50) * (right - left));    
     p.updatePosition();
     p.draw();
+    p.displayVeloc();
+
+    if (pressed['S'.charCodeAt(0)] == true) {
+	p.dx = 0;
+	p.dy = 0;
+    }
 
     for (var i = 0; i < asteroids.length; i++) {
         asteroids[i].updatePosition(15);
         asteroids[i].draw();
     }
+
+    for(var i = 0; i < bullets.length; i++){
+	bullets[i].updatePosition();
+	bullets[i].draw();
+    }
+
 }
 
 //Main loop
