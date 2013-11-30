@@ -1,17 +1,27 @@
+//Some global variables
 var canvas = document.getElementById('can');
 var ctx = canvas.getContext('2d');
 var pressed = {};
 var asteroids = [];
 var bullets = [];
 var touched = false;
-var pi = Math.PI;
-
-//Should be global attributes
 var delta_t = 0.05;
 
+//Alias some mathematics functions/constants
+var pi = Math.PI;
+var min = Math.min;
+var max = Math.max;
+var cos = Math.cos;
+var sin = Math.sin;
+var rand = Math.random;
+var round = Math.round;
+var sqrt = Math.sqrt;
+var pow = Math.pow;
+var abs = Math.abs;
 
 //Some thought should be given to these. They are bad. They make me feel bad.
-var id = -1; //Used as a unique id for each asteroid
+var ast_id = -1; //Used as a unique id for each asteroid
+var bul_id = -1;
 //var deletions = 0; //Used to modify the unique id when deleting an element
 
 
@@ -21,18 +31,17 @@ var deleteElem = function(obj, array) {
 }
 //It's a bad function!
 
-
 //Commonly used functions:
 
 //Return a real min to max (inclusive)
 var getUnif = function(min, max) {
-    return Math.random() * (max - min) + min;
+    return rand() * (max - min) + min;
 }
 
 
 //Return an integer min to max (inclusive)
 var getRandInt = function(min,max) {
-    return Math.round(getUnif(min,max));
+    return round(getUnif(min,max));
 }
 
 
@@ -40,7 +49,7 @@ var getRandInt = function(min,max) {
 var getNorm = function(mean, iterations) {
     var output = 0;
     for (var i = 0; i < iterations; i++) {
-        output += Math.random() * mean;
+        output += rand() * mean;
     }
     return output / iterations;
 }
@@ -73,26 +82,57 @@ function player(x,y) {
     this.dx = 0;
     this.dy = 0;
     this.theta = -pi/2;
-    this.max_veloc = 7;
+    this.max_veloc = 8;
 }
 
 player.prototype.move = function(accel,dtheta) {
+
+    var tar_dx,tar_dy,speed,non_zero_v,theta_func,veloc_theta;
+    var angular_v;
+
+    //Update angle
     this.theta += dtheta;
     this.theta %= 2 * pi;
-    this.dx += accel * Math.cos(this.theta);
-    this.dy += accel * Math.sin(this.theta);
-    this.dx = Math.min(this.dx,this.max_veloc);
-    this.dx = Math.max(this.dx,-this.max_veloc);
-    this.dy = Math.min(this.dy,this.max_veloc);
-    this.dy = Math.max(this.dy,-this.max_veloc);
+
+    //console.log(this.theta);
+
+    //Handle new velocity. Involves some compliated so that a maximum
+    //velocity can be sensibly imposed.
+    //First, calculate the new target velocity.
+    tar_dx = this.dx + accel * cos(this.theta);
+    tar_dy = this.dy + accel * sin(this.theta);
+    speed = sqrt(pow(tar_dx,2),pow(tar_dy,2));
+    
+    //if (speed < this.max_veloc) {
+	this.dx = tar_dx;
+	this.dy = tar_dy;
+    //}; 
+
+    //If your speed is maxed out, but you're thrusting this
+    //will allow you to begin to go in the direction that you're pointing.
+    non_zero_v = this.dx != 0 ? this.dx : this.dy;
+    theta_func = this.dx != 0 ? Math.acos : Math.asin;
+    //console.log(theta_func(pi));
+    veloc_theta = this.dx != 0 ? Math.acos(this.dx) : Math.asin(this.dy);
+    veloc_theta %= pi;
+    var test = this.dx != 0 ? 'x' : 'y';
+    //console.log(Math.acos(this.dx),Math.asin(this.dy),':',Math.acos(this.dx/speed),Math.asin(this.dy/speed),':',test,this.dx,',',this.dy);
+    angular_v = (this.theta - veloc_theta)/2;
+    //console.log(veloc_theta,':',this.theta,':',angular_v);
+    //p.displayTheta(veloc_theta,"#FFDDFF");
+    //p.displayTheta(angular_v + veloc_theta,"#00DDFF");
+    //if (speed >= this.max_veloc && (veloc_theta != this.theta)) {
+    //	this.dx = speed * cos(veloc_theta + angular_v);
+    //	this.dy = speed * sin(veloc_theta + angular_v);
+    //};
 }
 
 player.prototype.updatePosition = function() {
     this.x += this.dx;
     this.y += this.dy;
     for(var i = 0; i < this.num_verts + 1; i++) {
-	this.x_adds[i] = this.x_shape[i] * Math.cos(this.theta) - this.y_shape[i] * Math.sin(this.theta);
-	this.y_adds[i] = this.x_shape[i] * Math.sin(this.theta) + this.y_shape[i] * Math.cos(this.theta);
+	this.x_adds[i] = this.x_shape[i] * cos(this.theta) - this.y_shape[i] * sin(this.theta);
+	this.y_adds[i] = this.x_shape[i] * sin(this.theta) + this.y_shape[i] * cos(this.theta);
     }
 
     if (this.x > canvas.width) {
@@ -129,27 +169,33 @@ player.prototype.displayVeloc = function () {
     ctx.stroke();
 }
 
-player.prototype.shoot = function() {
-    var vx;
-    var vy;
-    var speed = Math.sqrt(Math.pow(this.dx,2),Math.pow(this.dy,2));
-    if (speed >= 1) {
-	vx = (speed + 2/Math.abs(this.dx)) * Math.cos(this.theta) + this.dx;
-	vy = (speed + 2/Math.abs(this.dx)) * Math.sin(this.theta) + this.dy;
-    } else {
-	vx = (speed + 3) * Math.cos(this.theta);
-	vy = (speed + 3) * Math.sin(this.theta);
-    };
-
-    bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1,vx,vy));
+player.prototype.displayTheta = function (th,color) {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(this.x,this.y);
+    ctx.lineTo(this.x + (32 + this.x_shape[0])*cos(th),this.y + (32 + this.x_shape[0])*sin(th));
+    ctx.stroke();
 }
 
-function bullet(x,y,r,dx,dy) {
+player.prototype.shoot = function(id) {
+    var vx;
+    var vy;
+    var speed = sqrt(pow(this.dx,2),pow(this.dy,2));
+    speed = max(5,speed);
+    vx = (speed + 5) * cos(this.theta) + this.dx;
+    vy = (speed + 5) * sin(this.theta) + this.dy;
+
+    bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,id));
+}
+
+function bullet(x,y,r,dx,dy,id) {
     this.x = x;
     this.y = y;
     this.r = r;
     this.dx = dx;
     this.dy = dy;
+    this.id = id;
+    this.crossings = 0;
 }
 
 bullet.prototype.updatePosition = function() {
@@ -158,15 +204,24 @@ bullet.prototype.updatePosition = function() {
 
     if (this.x > canvas.width) {
         this.x %= canvas.width;
+	this.crossings++;
     } else if (this.x < 0) {
         this.x = canvas.width;
+	this.crossings++;
     };
 
     if (this.y > canvas.height) {
         this.y %= canvas.height;
+	this.crossings++;
     } else if (this.y < 0) {
         this.y = canvas.height;
+	this.crossings++;
     };
+
+    if (this.crossings > 1) {
+	deleteBullet(this.id);
+    }
+
 }
 
 bullet.prototype.draw = function () {
@@ -177,6 +232,9 @@ bullet.prototype.draw = function () {
     ctx.fill();
 }
 
+var deleteBullet = function(id) {
+    bullets[id] = null;
+}
 
 //Asteroid object definition:
 function asteroid(x, y, r, max_veloc, alpha, id, color) {
@@ -190,6 +248,9 @@ function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.y_veloc = 10*getUnif(-1,1);
     this.id = id
     this.friction = 1;
+    this.max_r;
+    this.max_x;
+    this.max_y;
     //this.max_x = 0;
     //this.max_y = 0;
     //this.min_x = 0;
@@ -215,13 +276,14 @@ function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.x_adds = [];
     this.y_adds = [];
     for(var i = 0; i<this.num_verts; i++){
-	this.x_adds[i] = (this.r + this.r_offsets[i]) * Math.cos(this.thetas[i]);
-	this.y_adds[i] = (this.r + this.r_offsets[i]) * Math.sin(this.thetas[i]);
+	this.x_adds[i] = (this.r + this.r_offsets[i]) * cos(this.thetas[i]);
+	this.y_adds[i] = (this.r + this.r_offsets[i]) * sin(this.thetas[i]);
     }
     this.x_adds[this.num_verts] = this.x_adds[0];
     this.y_adds[this.num_verts] = this.y_adds[0];
     this.max_x = Math.max.apply(Math,this.x_adds);
     this.max_y = Math.max.apply(Math,this.y_adds);
+    this.max_r = Math.max.apply(Math,this.r_offsets) + this.r;
 }
 
 
@@ -244,8 +306,8 @@ asteroid.prototype.updatePosition = function (scale) {
     //this.y_veloc += getUnif(-scale, scale) / this.r;
     //this.x_veloc /= this.friction;
     //this.y_veloc /= this.friction;
-    //this.x_veloc = Math.min(this.x_veloc, this.max_veloc);
-    //this.y_veloc = Math.min(this.y_veloc, this.max_veloc);
+    //this.x_veloc = min(this.x_veloc, this.max_veloc);
+    //this.y_veloc = min(this.y_veloc, this.max_veloc);
     //Update positions - make sure dot stays on canvas
     this.x += this.x_veloc * delta_t;
     this.y += this.y_veloc * delta_t;
@@ -274,6 +336,10 @@ asteroid.prototype.updatePosition = function (scale) {
     };
 };
 
+var deleteAsteroid = function(id) {
+    asteroids[id] = null;
+}
+
 //Creates the controler events
 var setup = function () {
     document.addEventListener('keydown', function (e) {
@@ -299,20 +365,32 @@ var up;
 var down;
 var left;
 var right;
+var shoot_lock = false;
+var frame = 0;
+var dtheta = (2*pi/(60*1.5)); //measured in sections needed to turn the ship 360 degrees
 getSetStageSize(1, 1);
 var p = new player(canvas.width/2,canvas.height/2);
+var dist;
 var updateGameState = function () {
+
+    //ticktock(frame++);
+    
     if (pressed['A'.charCodeAt(0)] == true || touched) {
-        id++;
+        ast_id++;
         x = getUnif(0,canvas.width);
         y = getUnif(0,canvas.height);
         r = getUnif(20,50);
         color = [1, 1, 1];
-        asteroids.push(new asteroid(x, y, r, 20, 1, id, color));
+        asteroids.push(new asteroid(x, y, r, 20, 1, ast_id, color));
     }
 
-    if (pressed[' '.charCodeAt(0)] == true) {
-	p.shoot();
+    if (pressed[' '.charCodeAt(0)] == false) {
+	shoot_lock = false;
+    }
+    if (!shoot_lock && pressed[' '.charCodeAt(0)] == true) {
+	bul_id++;
+	p.shoot(bul_id);
+	shoot_lock = true;
     }
     
     up = pressed[38] ? 1 : 0;
@@ -320,10 +398,11 @@ var updateGameState = function () {
     left = pressed[37] ? 1 : 0;
     right = pressed[39] ? 1 : 0;
 
-    p.move(0.1 * (up - down), (pi/50) * (right - left));    
+    p.move(0.1 * up, dtheta * (right - left));
     p.updatePosition();
     p.draw();
-    p.displayVeloc();
+    //p.displayVeloc();
+    //p.displayTheta(p.theta);
 
     if (pressed['S'.charCodeAt(0)] == true) {
 	p.dx = 0;
@@ -331,16 +410,44 @@ var updateGameState = function () {
     }
 
     for (var i = 0; i < asteroids.length; i++) {
-        asteroids[i].updatePosition(15);
+	if(asteroids[i] == null) {
+	    continue;
+	}
         asteroids[i].draw();
+        asteroids[i].updatePosition(15);
     }
 
     for(var i = 0; i < bullets.length; i++){
-	bullets[i].updatePosition();
+	if(bullets[i] == null) {
+	    continue;
+	}
+
+	for(var j = 0; j < asteroids.length; j++){
+	    if(asteroids[j] == null || bullets[i] == null) {
+		continue;
+	    }
+	    dist = sqrt(pow(bullets[i].x-asteroids[j].x,2)+pow(bullets[i].y-asteroids[j].y,2));
+	    if(dist <= asteroids[j].max_r) {
+		deleteAsteroid(j);
+		deleteBullet(i);
+	    }
+	}
+	
+	if(bullets[i] == null) {
+	    continue;
+	}
 	bullets[i].draw();
+	bullets[i].updatePosition();
     }
 
 }
+
+var ticktock = function (frame) {
+    if (frame % 60 == 0) {
+	console.log('Tick');
+    }
+}
+
 
 //Main loop
 var gameLoop = function () {
