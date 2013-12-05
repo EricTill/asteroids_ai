@@ -367,7 +367,7 @@ var left;
 var right;
 var shoot_lock = false;
 var frame = 0;
-var dtheta = (2*pi/(60*1.5)); //measured in sections needed to turn the ship 360 degrees
+var dtheta = (2*pi/(60*1.25)); //measured in sections needed to turn the ship 360 degrees
 getSetStageSize(1, 1);
 var p = new player(canvas.width/2,canvas.height/2);
 var dist;
@@ -398,7 +398,7 @@ var updateGameState = function () {
     left = pressed[37] ? 1 : 0;
     right = pressed[39] ? 1 : 0;
 
-    p.move(0.1 * up, dtheta * (right - left));
+    p.move(0.1 * (up - down), dtheta * (right - left));
     p.updatePosition();
     p.draw();
     //p.displayVeloc();
