@@ -34,14 +34,14 @@ var deleteElem = function(obj, array) {
 //Commonly used functions:
 
 //Return a real min to max (inclusive)
-var getUnif = function(min, max) {
-    return rand() * (max - min) + min;
+var getUnif = function(a, b) {
+    return rand() * (a - b) + b;
 }
 
 
 //Return an integer min to max (inclusive)
-var getRandInt = function(min,max) {
-    return round(getUnif(min,max));
+var getRandInt = function(a,b) {
+    return round(getUnif(a,b));
 }
 
 
