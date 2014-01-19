@@ -13,11 +13,15 @@ var min = Math.min;
 var max = Math.max;
 var cos = Math.cos;
 var sin = Math.sin;
+var asin = Math.asin;
+var acos = Math.acos;
 var rand = Math.random;
 var round = Math.round;
 var sqrt = Math.sqrt;
 var pow = Math.pow;
 var abs = Math.abs;
+var floor = Math.floor;
+var atan2 = Math.atan2;
 
 //Some thought should be given to these. They are bad. They make me feel bad.
 var ast_id = -1; //Used as a unique id for each asteroid
@@ -35,7 +39,7 @@ var deleteElem = function(obj, array) {
 
 //Return a real min to max (inclusive)
 var getUnif = function(a, b) {
-    return rand() * (a - b) + b;
+    return rand() * (b - a) + a;
 }
 
 
@@ -92,7 +96,7 @@ player.prototype.move = function(accel,dtheta) {
 
     //Update angle
     this.theta += dtheta;
-    this.theta %= 2 * pi;
+    this.theta = circConstrain(this.theta);
 
     //console.log(this.theta);
 
@@ -263,7 +267,7 @@ function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.thetas = new Array(this.num_verts);
     var scale = ((2*pi)/this.num_verts);
     for(var i = 0; i<this.num_verts; i++){
-	this.thetas[i] = i*scale + getUnif(-scale/3,scale/3);
+	this.thetas[i] = circConstrain(i*scale + getUnif(-scale/3,scale/3));
     }
     this.thetas.sort();
     this.r_offsets = new Array(this.num_verts);
@@ -284,6 +288,7 @@ function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.max_x = Math.max.apply(Math,this.x_adds);
     this.max_y = Math.max.apply(Math,this.y_adds);
     this.max_r = Math.max.apply(Math,this.r_offsets) + this.r;
+    this.min_r = Math.min.apply(Math,this.r_offsets) + this.r;
 }
 
 
@@ -336,6 +341,14 @@ asteroid.prototype.updatePosition = function (scale) {
     };
 };
 
+asteroid.prototype.displayTheta = function (th,color) {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(this.x,this.y);
+    ctx.lineTo(this.x + (this.max_r + 32)*cos(th),this.y + (this.max_r + 32)*sin(th));
+    ctx.stroke();
+}
+
 var deleteAsteroid = function(id) {
     asteroids[id] = null;
 }
@@ -357,6 +370,11 @@ var setup = function () {
 }
 
 
+var circConstrain = function (theta) {
+    return theta-2*pi*floor(theta/(2*pi));
+}
+
+
 var x;
 var y;
 var r;
@@ -369,8 +387,8 @@ var shoot_lock = false;
 var frame = 0;
 var dtheta = (2*pi/(60*1.25)); //measured in sections needed to turn the ship 360 degrees
 getSetStageSize(1, 1);
-var p = new player(canvas.width/2,canvas.height/2);
 var dist;
+var p = new player(canvas.width/2,canvas.height/2);
 var updateGameState = function () {
 
     //ticktock(frame++);
@@ -409,6 +427,7 @@ var updateGameState = function () {
 	p.dy = 0;
     }
 
+    //Loop over all (non-null) asteroids, render them, and update their positions
     for (var i = 0; i < asteroids.length; i++) {
 	if(asteroids[i] == null) {
 	    continue;
@@ -417,6 +436,7 @@ var updateGameState = function () {
         asteroids[i].updatePosition(15);
     }
 
+    //Loop over all (non-null) bullets, perform collision detection on all asteroids, render them and then update their positions
     for(var i = 0; i < bullets.length; i++){
 	if(bullets[i] == null) {
 	    continue;
@@ -428,8 +448,16 @@ var updateGameState = function () {
 	    }
 	    dist = sqrt(pow(bullets[i].x-asteroids[j].x,2)+pow(bullets[i].y-asteroids[j].y,2));
 	    if(dist <= asteroids[j].max_r) {
-		deleteAsteroid(j);
-		deleteBullet(i);
+		if(dist <= asteroids[j].min_r) {
+		    deleteAsteroid(j);
+		    deleteBullet(i);
+		    continue;
+		}
+		else if(preciseCollide(bullets[i],asteroids[j],dist)){
+		    deleteAsteroid(j);
+		    deleteBullet(i);
+		    continue;
+		}
 	    }
 	}
 	
@@ -440,6 +468,41 @@ var updateGameState = function () {
 	bullets[i].updatePosition();
     }
 
+}
+
+var preciseCollide = function (bul,ast,dist) {
+    var ang;
+    //First, find angle between bullet and asteroid (from asteroid's pov)
+    ang = circConstrain(atan2(bul.y-ast.y,bul.x-ast.x));
+    //ast.displayTheta(ang,"#00FF00"); console.log(ang,':::ast:',ast.x,ast.y,':bul:',bul.x,bul.y);
+
+    //Next, find which two verticies of the asteroid the bullet is between
+    var indx = 0;
+    while (indx<ast.thetas.length) {
+	indx++;
+	if(ang == ast.thetas[indx]) {
+	    return dist > ast.r_offsets[indx] ? false : true;
+	}
+	else if (ang > ast.thetas[indx]) {
+	    break;
+	}
+    }
+
+    //Finally, calculate the distance from the center of the asteroid to the point on
+    //the correct edge which is in between the bullet and center of the asteroid.
+    if(indx < (ast.thetas.length - 1)) {
+	var weight = (ang - ast.thetas[indx])/(ast.thetas[indx + 1] - ast.thetas[indx]);
+	var edge_dist = ast.r_offsets[indx]*(weight-1) + ast.r_offsets[indx+1]*weight; //IS THIS RIGHT?? Worried about where the weight goes...
+	debugger;
+	return  dist > edge_dist ? false : true; 
+    }
+    else {
+	var weight = (ang - ast.thetas[indx])/((2*pi + ast.thetas[0]) - ast.thetas[indx]); //Could rework this to eliminate if/else statement with % length and 2*pi switch
+	var edge_dist = ast.r_offsets[indx]*(weight-1) + ast.r_offsets[0]*weight;
+	console.log("in between");
+	debugger;
+	return  dist > edge_dist ? false : true;
+    }
 }
 
 var ticktock = function (frame) {
