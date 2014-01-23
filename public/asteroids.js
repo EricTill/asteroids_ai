@@ -289,6 +289,8 @@ function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.max_y = Math.max.apply(Math,this.y_adds);
     this.max_r = Math.max.apply(Math,this.r_offsets) + this.r;
     this.min_r = Math.min.apply(Math,this.r_offsets) + this.r;
+    this.max_r_indx = this.r_offsets.indexOf(Math.max.apply(Math,this.r_offsets));
+    this.min_r_indx = this.r_offsets.indexOf(Math.min.apply(Math,this.r_offsets));
 }
 
 
@@ -306,28 +308,13 @@ asteroid.prototype.draw = function () {
 
 //Updates the position of an asteroid
 asteroid.prototype.updatePosition = function (scale) {
-    //Calculate position
-    //this.x_veloc += getUnif(-scale, scale) / this.r;
-    //this.y_veloc += getUnif(-scale, scale) / this.r;
-    //this.x_veloc /= this.friction;
-    //this.y_veloc /= this.friction;
+    //Update positions - make sure dot stays on canvas
     //this.x_veloc = min(this.x_veloc, this.max_veloc);
     //this.y_veloc = min(this.y_veloc, this.max_veloc);
-    //Update positions - make sure dot stays on canvas
     this.x += this.x_veloc * delta_t;
     this.y += this.y_veloc * delta_t;
 
-    //Location related
-    //this.max_y = this.y + this.max_y;
-    //this.max_x = this.x + this.max_x;
-    //this.min_y = this.y - this.max_y;
-    //this.min_x = this.x - this.max_x;
-    //this.quadrants[0] = ((this.max_y > canvas.height/2) && (this.max_x > canvas.width));
-    //this.quadrants[1] = 
-    //this.quadrants[2] = 
-    //this.quadrants[3] = 
-
-    //Collision detection
+    //Edge collision detection
     if (this.x > canvas.width) {
         this.x %= canvas.width;
     } else if (this.x < 0) {
@@ -341,11 +328,11 @@ asteroid.prototype.updatePosition = function (scale) {
     };
 };
 
-asteroid.prototype.displayTheta = function (th,color) {
+asteroid.prototype.displayTheta = function (th,color,len) {
     ctx.strokeStyle = color;
     ctx.beginPath();
     ctx.moveTo(this.x,this.y);
-    ctx.lineTo(this.x + (this.max_r + 32)*cos(th),this.y + (this.max_r + 32)*sin(th));
+    ctx.lineTo(this.x + len*cos(th),this.y + len*sin(th));
     ctx.stroke();
 }
 
@@ -474,35 +461,32 @@ var preciseCollide = function (bul,ast,dist) {
     var ang;
     //First, find angle between bullet and asteroid (from asteroid's pov)
     ang = circConstrain(atan2(bul.y-ast.y,bul.x-ast.x));
-    //ast.displayTheta(ang,"#00FF00"); console.log(ang,':::ast:',ast.x,ast.y,':bul:',bul.x,bul.y);
 
     //Next, find which two verticies of the asteroid the bullet is between
     var indx = 0;
     while (indx<ast.thetas.length) {
-	indx++;
 	if(ang == ast.thetas[indx]) {
-	    return dist > ast.r_offsets[indx] ? false : true;
+	    return dist > (ast.r_offsets[indx]+ast.r) ? false : true; //on the off chance that the bullet directly hits a vertex
 	}
-	else if (ang > ast.thetas[indx]) {
+	else if (ang < ast.thetas[indx]) {
 	    break;
 	}
+	indx++;
     }
 
     //Finally, calculate the distance from the center of the asteroid to the point on
     //the correct edge which is in between the bullet and center of the asteroid.
-    if(indx < (ast.thetas.length - 1)) {
-	var weight = (ang - ast.thetas[indx])/(ast.thetas[indx + 1] - ast.thetas[indx]);
-	var edge_dist = ast.r_offsets[indx]*(weight-1) + ast.r_offsets[indx+1]*weight; //IS THIS RIGHT?? Worried about where the weight goes...
-	debugger;
-	return  dist > edge_dist ? false : true; 
-    }
-    else {
-	var weight = (ang - ast.thetas[indx])/((2*pi + ast.thetas[0]) - ast.thetas[indx]); //Could rework this to eliminate if/else statement with % length and 2*pi switch
-	var edge_dist = ast.r_offsets[indx]*(weight-1) + ast.r_offsets[0]*weight;
-	console.log("in between");
-	debugger;
-	return  dist > edge_dist ? false : true;
-    }
+    //In order to do this, calculate the slope between the two points to create and use
+    //a linear equation (converted to polar form) to solve for this distance.
+    var x1 = ast.x_adds[(indx - 1) % ast.num_verts];
+    var x2 = ast.x_adds[indx % ast.num_verts];
+    var y1 = ast.y_adds[(indx - 1) % ast.num_verts];
+    var y2 = ast.y_adds[indx % ast.num_verts];
+    //TODO: x1==x2 exception
+
+    var m = (y2-y1)/(x2-x1);
+    var edge_r = (y1 - m * x1)/(sin(ang) - (m * cos(ang)));
+    return dist > edge_r ? false : true;
 }
 
 var ticktock = function (frame) {
