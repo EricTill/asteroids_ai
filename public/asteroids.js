@@ -87,6 +87,7 @@ function player(x,y) {
     this.dy = 0;
     this.theta = -pi/2;
     this.max_veloc = 8;
+    this.score = 0;
 }
 
 player.prototype.move = function(accel,dtheta) {
@@ -191,6 +192,18 @@ player.prototype.shoot = function(id) {
 
     bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,id));
 }
+
+//This could be more complicated...
+player.prototype.addScore = function(points) {
+    this.score += points;
+}
+
+player.prototype.displayScore = function() {
+    ctx.font = "20px LucidaConsole";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(this.score.toString(),canvas.width/2,30);
+}
+
 
 function bullet(x,y,r,dx,dy,id) {
     this.x = x;
@@ -336,7 +349,10 @@ asteroid.prototype.displayTheta = function (th,color,len) {
     ctx.stroke();
 }
 
-var deleteAsteroid = function(id) {
+var deleteAsteroid = function(id,shot) {
+    if (shot) {
+	p.addScore(1);
+    }
     asteroids[id] = null;
 }
 
@@ -372,13 +388,15 @@ var left;
 var right;
 var shoot_lock = false;
 var frame = 0;
-var dtheta = (2*pi/(60*1.25)); //measured in sections needed to turn the ship 360 degrees
+var dtheta = (2*pi/(60*1.3)); //measured in sections needed to turn the ship 360 degrees
 getSetStageSize(1, 1);
 var dist;
 var p = new player(canvas.width/2,canvas.height/2);
+
 var updateGameState = function () {
 
     //ticktock(frame++);
+    p.displayScore();
     
     if (pressed['A'.charCodeAt(0)] == true || touched) {
         ast_id++;
@@ -398,6 +416,7 @@ var updateGameState = function () {
 	shoot_lock = true;
     }
     
+    //use arrow keys to move player around
     up = pressed[38] ? 1 : 0;
     down = pressed[40] ? 1 : 0;
     left = pressed[37] ? 1 : 0;
@@ -436,12 +455,12 @@ var updateGameState = function () {
 	    dist = sqrt(pow(bullets[i].x-asteroids[j].x,2)+pow(bullets[i].y-asteroids[j].y,2));
 	    if(dist <= asteroids[j].max_r) {
 		if(dist <= asteroids[j].min_r) {
-		    deleteAsteroid(j);
+		    deleteAsteroid(j,true);
 		    deleteBullet(i);
 		    continue;
 		}
 		else if(preciseCollide(bullets[i],asteroids[j],dist)){
-		    deleteAsteroid(j);
+		    deleteAsteroid(j,true);
 		    deleteBullet(i);
 		    continue;
 		}
@@ -495,7 +514,6 @@ var ticktock = function (frame) {
     }
 }
 
-
 //Main loop
 var gameLoop = function () {
     getSetStageSize(1, 1);
@@ -513,13 +531,6 @@ window.requestAnimFrame = (
         window.setTimeout(callback, 1000 / 60);
     }
 );
-
-//Old style of calling requestAnimationFrame... not really sure which is best, honestly
-//window.requestAnimFrame = (function () {
-//    return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) {
-//        window.setTimeout(callback, 1000 / 60);
-//    };
-//})();
 
 setup();
 window.requestAnimFrame(gameLoop);
