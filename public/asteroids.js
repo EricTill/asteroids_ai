@@ -88,6 +88,13 @@ function player(x,y) {
     this.theta = -pi/2;
     this.max_veloc = 8;
     this.score = 0;
+    this.thrusting = false;
+    this.thrust_x_shape = [-14, -16.5, -14, -19, -14, -16.5, -14];
+    this.thrust_y_shape = [-6, -4, -2, 0, 2, 4, 6];
+    this.thrust_x_adds = [];
+    this.thrust_y_adds = [];
+    this.thrust_flicker_frames = 5;
+    this.thrust_lock = this.thrust_flicker_frames-1;
 }
 
 player.prototype.move = function(accel,dtheta) {
@@ -154,7 +161,8 @@ player.prototype.updatePosition = function() {
 }
 
 player.prototype.draw = function () {
-    //console.log( 'drawing' );
+
+    //draw player's ship
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -163,6 +171,24 @@ player.prototype.draw = function () {
     	ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
     }
     ctx.stroke();
+
+    //draw afterburners if player is thrusting
+    if(this.thrusting) {
+	this.thrust_lock++;
+	if((this.thrust_lock %= this.thrust_flicker_frames) == 0) {
+	    //ctx.strokeStyle = "#ff7722";
+	    ctx.beginPath();
+	    for(var i = 0; i < this.thrust_x_shape.length; i++) {
+		this.thrust_x_adds[i] = this.thrust_x_shape[i] * cos(this.theta) - this.thrust_y_shape[i] * sin(this.theta);
+		this.thrust_y_adds[i] = this.thrust_x_shape[i] * sin(this.theta) + this.thrust_y_shape[i] * cos(this.theta);
+	    }
+	    ctx.moveTo(this.x + this.thrust_x_adds[0], this.y + this.thrust_y_adds[0]);
+	    for(var i = 1; i<this.thrust_x_shape.length; i++) {
+		ctx.lineTo(this.x + this.thrust_x_adds[i], this.y + this.thrust_y_adds[i]);
+	    }
+	    ctx.stroke();
+	}
+    }
     ctx.lineWidth = 1;
 }
 
@@ -421,6 +447,9 @@ var updateGameState = function () {
     down = pressed[40] ? 1 : 0;
     left = pressed[37] ? 1 : 0;
     right = pressed[39] ? 1 : 0;
+
+    //For thrust "animation" on player
+    p.thrusting = up;
 
     p.move(0.1 * (up - down), dtheta * (right - left));
     p.updatePosition();
