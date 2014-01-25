@@ -23,17 +23,6 @@ var abs = Math.abs;
 var floor = Math.floor;
 var atan2 = Math.atan2;
 
-//Some thought should be given to these. They are bad. They make me feel bad.
-var ast_id = -1; //Used as a unique id for each asteroid
-var bul_id = -1;
-//var deletions = 0; //Used to modify the unique id when deleting an element
-
-
-//This function should be changed!
-var deleteElem = function(obj, array) {
-    array.splice(array.indexOf(obj),1);
-}
-//It's a bad function!
 
 //Commonly used functions:
 
@@ -210,15 +199,21 @@ player.prototype.displayTheta = function (th,color) {
     ctx.stroke();
 }
 
-player.prototype.shoot = function(id) {
+player.prototype.shoot = function() {
     var vx;
     var vy;
     var speed = sqrt(this.dx*this.dx,this.dy*this.dy);
     speed = max(5,speed);
     vx = (speed + 5) * cos(this.theta) + this.dx;
     vy = (speed + 5) * sin(this.theta) + this.dy;
-
-    bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,id));
+    
+    if(null_buls.length > 0) {
+	var curr_id = null_buls.pop();
+	bullets[curr_id] = new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,curr_id);
+    }
+    else {
+	bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,bullets.length));
+    }
 }
 
 //This could be more complicated...
@@ -265,6 +260,7 @@ bullet.prototype.updatePosition = function() {
 
     if (this.crossings > 1) {
 	deleteBullet(this.id);
+	null_buls.push(this.id);
     }
 
 }
@@ -420,6 +416,8 @@ var dtheta = (2*pi/(60*1.3)); //measured in sections needed to turn the ship 360
 getSetStageSize(1, 1);
 var dist;
 var p = new player(canvas.width/2,canvas.height/2);
+var null_asts = [];
+var null_buls = [];
 
 var updateGameState = function () {
 
@@ -456,6 +454,8 @@ var updateGameState = function () {
 		if(dist <= asteroids[j].min_r || preciseCollide(bullets[i],asteroids[j],dist)) {
 		    deleteAsteroid(j,true);
 		    deleteBullet(i);
+		    null_asts.push(j);
+		    null_buls.push(i);
 		    continue;
 		}
 	    }
@@ -471,22 +471,27 @@ var updateGameState = function () {
 }
 
 var getControlInputs = function () {
-        if (pressed['A'.charCodeAt(0)] == true || touched) {
-        ast_id++;
+    if (pressed['A'.charCodeAt(0)] == true || touched) {
         x = getUnif(0,canvas.width);
         y = getUnif(0,canvas.height);
         r = getUnif(20,50);
         color = [1, 1, 1];
-        asteroids.push(new asteroid(x, y, r, 20, 1, ast_id, color));
+	//Only push new elements if there aren't any free null ones
+	if(null_asts.length > 0) {
+	    var curr_id = null_asts.pop();
+	    asteroids[curr_id] = new asteroid(x, y, r, 20, 1, curr_id, color);
+	}
+	else {
+            asteroids.push(new asteroid(x, y, r, 20, 1, asteroids.length-1, color));
+	}
     }
 
     if (pressed[' '.charCodeAt(0)] == false) {
 	shoot_lock = false;
     }
     if (!shoot_lock && pressed[' '.charCodeAt(0)] == true) {
-	bul_id++;
-	p.shoot(bul_id);
 	shoot_lock = true;
+	p.shoot();
     }
     
     //use arrow keys to move player around
