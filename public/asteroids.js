@@ -4,6 +4,7 @@ var ctx = canvas.getContext('2d');
 var pressed = {};
 var asteroids = [];
 var bullets = [];
+var particles = [];
 var touched = false;
 var delta_t = 0.05;
 
@@ -22,6 +23,7 @@ var pow = Math.pow;
 var abs = Math.abs;
 var floor = Math.floor;
 var atan2 = Math.atan2;
+var exp = Math.exp;
 
 
 //Commonly used functions:
@@ -273,10 +275,6 @@ bullet.prototype.draw = function () {
     ctx.fill();
 }
 
-var deleteBullet = function(id) {
-    bullets[id] = null;
-}
-
 //Asteroid object definition:
 function asteroid(x, y, r, max_veloc, alpha, id, color) {
     this.x = x;
@@ -373,11 +371,82 @@ asteroid.prototype.displayTheta = function (th,color,len) {
     ctx.stroke();
 }
 
+function particle(x,y,id) {
+    this.age = 0;
+    this.theta = circConstrain(getUnif(0,2*pi));
+    this.alpha = 1;
+    this.lifespan = 0.6*60; //seconds_alive*60
+    this.speed = getUnif(3,7);
+    this.x = x;
+    this.y = y;
+    this.dx = this.speed*cos(this.theta);
+    this.dy = this.speed*sin(this.theta);
+    this.r = 1.3;
+    this.id = id;
+    this.marked_for_deletion = false;
+}
+
+particle.prototype.updatePosition = function () {
+    this.age++;
+    this.alpha -= 1/this.lifespan; //linear decay - alpha = 0 after this.lifespan # of frames
+    this.alpha = max(this.alpha,0);
+    this.x += this.dx;
+    this.y += this.dy;
+
+    if (this.x > canvas.width) {
+	this.marked_for_deletion = true;
+    } else if (this.x < 0) {
+	this.marked_for_deletion = true;
+    };
+
+    if (this.y > canvas.height) {
+	this.marked_for_deletion = true;
+    } else if (this.y < 0) {
+	this.marked_for_deletion = true;
+    };
+
+    if(this.age > this.lifespan || this.alpha == 0) {
+	this.marked_for_deletion = true;
+    }
+
+    if(this.marked_for_deletion) {
+	deleteParticle(this.id);
+	null_pars.push(this.id);
+    }
+}
+
+particle.prototype.draw = function() {
+    ctx.fillStyle = "rgba(255,255,255,"+this.alpha+")";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(this.x,this.y,this.r,0,2*pi);
+    ctx.fill();
+}
+
+var deleteParticle = function(id) {
+    particles[id] = null;
+}
+
 var deleteAsteroid = function(id,shot) {
     if (shot) {
 	p.addScore(1);
     }
     asteroids[id] = null;
+}
+
+var deleteBullet = function(id) {
+    if(bullets[id].crossings < 2) {
+	for(var i = 0; i <= getRandInt(10,20); i++){
+	    if(null_pars.length > 0) {
+		var curr_id = null_pars.pop();
+		particles[curr_id] = new particle(bullets[id].x,bullets[id].y,curr_id)
+	    }
+	    else {
+		particles.push(new particle(bullets[id].x,bullets[id].y,particles.length));
+	    }
+	}
+    }
+    bullets[id] = null;
 }
 
 //Creates the controler events
@@ -418,6 +487,7 @@ var dist;
 var p = new player(canvas.width/2,canvas.height/2);
 var null_asts = [];
 var null_buls = [];
+var null_pars = [];
 
 var updateGameState = function () {
 
@@ -428,7 +498,6 @@ var updateGameState = function () {
 
     p.updatePosition();
     p.draw();
-
 
     //Loop over all (non-null) asteroids, render them, and update their positions
     for (var i = 0; i < asteroids.length; i++) {
@@ -468,6 +537,14 @@ var updateGameState = function () {
 	bullets[i].updatePosition();
     }
 
+    //Loop over all particles, update their positions and render them
+    for (var i = 0; i < particles.length; i++) {
+	if(particles[i] == null) {
+	    continue;
+	}
+        particles[i].draw();
+        particles[i].updatePosition();
+    }
 }
 
 var getControlInputs = function () {
