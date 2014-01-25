@@ -115,7 +115,7 @@ player.prototype.move = function(accel,dtheta) {
     //First, calculate the new target velocity.
     tar_dx = this.dx + accel * cos(this.theta);
     tar_dy = this.dy + accel * sin(this.theta);
-    speed = sqrt(pow(tar_dx,2),pow(tar_dy,2));
+    speed = sqrt(tar_dx*tar_dx,tar_dy*tar_dy);
     
     //if (speed < this.max_veloc) {
 	this.dx = tar_dx;
@@ -213,7 +213,7 @@ player.prototype.displayTheta = function (th,color) {
 player.prototype.shoot = function(id) {
     var vx;
     var vy;
-    var speed = sqrt(pow(this.dx,2),pow(this.dy,2));
+    var speed = sqrt(this.dx*this.dx,this.dy*this.dy);
     speed = max(5,speed);
     vx = (speed + 5) * cos(this.theta) + this.dx;
     vy = (speed + 5) * sin(this.theta) + this.dy;
@@ -426,7 +426,52 @@ var updateGameState = function () {
     //ticktock(frame++);
     p.displayScore();
     
-    if (pressed['A'.charCodeAt(0)] == true || touched) {
+    getControlInputs();
+
+    p.updatePosition();
+    p.draw();
+
+
+    //Loop over all (non-null) asteroids, render them, and update their positions
+    for (var i = 0; i < asteroids.length; i++) {
+	if(asteroids[i] == null) {
+	    continue;
+	}
+        asteroids[i].draw();
+        asteroids[i].updatePosition(15);
+    }
+
+    //Loop over all (non-null) bullets, perform collision detection on all asteroids, render them and then update their positions
+    for(var i = 0; i < bullets.length; i++){
+
+	if(bullets[i] == null) { continue; } //Skip any null bullets
+
+	//Perform collision detection on asteroids and bullets
+	for(var j = 0; j < asteroids.length; j++){
+
+	    if(asteroids[j] == null || bullets[i] == null) { continue; } //Skip any null bullets or asteroids
+
+	    dist = sqrt((bullets[i].x-asteroids[j].x)*(bullets[i].x-asteroids[j].x)+(bullets[i].y-asteroids[j].y)*(bullets[i].y-asteroids[j].y));
+	    if(dist <= asteroids[j].max_r) {
+		if(dist <= asteroids[j].min_r || preciseCollide(bullets[i],asteroids[j],dist)) {
+		    deleteAsteroid(j,true);
+		    deleteBullet(i);
+		    continue;
+		}
+	    }
+	}
+
+	if(bullets[i] == null) { continue; } //Skip any null bullets
+
+	//Render and update all non-null bullets
+	bullets[i].draw();
+	bullets[i].updatePosition();
+    }
+
+}
+
+var getControlInputs = function () {
+        if (pressed['A'.charCodeAt(0)] == true || touched) {
         ast_id++;
         x = getUnif(0,canvas.width);
         y = getUnif(0,canvas.height);
@@ -454,8 +499,6 @@ var updateGameState = function () {
     p.thrusting = up;
 
     p.move(0.1 * (up - down), dtheta * (right - left));
-    p.updatePosition();
-    p.draw();
     //p.displayVeloc();
     //p.displayTheta(p.theta);
 
@@ -463,48 +506,6 @@ var updateGameState = function () {
 	p.dx = 0;
 	p.dy = 0;
     }
-
-    //Loop over all (non-null) asteroids, render them, and update their positions
-    for (var i = 0; i < asteroids.length; i++) {
-	if(asteroids[i] == null) {
-	    continue;
-	}
-        asteroids[i].draw();
-        asteroids[i].updatePosition(15);
-    }
-
-    //Loop over all (non-null) bullets, perform collision detection on all asteroids, render them and then update their positions
-    for(var i = 0; i < bullets.length; i++){
-	if(bullets[i] == null) {
-	    continue;
-	}
-
-	for(var j = 0; j < asteroids.length; j++){
-	    if(asteroids[j] == null || bullets[i] == null) {
-		continue;
-	    }
-	    dist = sqrt(pow(bullets[i].x-asteroids[j].x,2)+pow(bullets[i].y-asteroids[j].y,2));
-	    if(dist <= asteroids[j].max_r) {
-		if(dist <= asteroids[j].min_r) {
-		    deleteAsteroid(j,true);
-		    deleteBullet(i);
-		    continue;
-		}
-		else if(preciseCollide(bullets[i],asteroids[j],dist)){
-		    deleteAsteroid(j,true);
-		    deleteBullet(i);
-		    continue;
-		}
-	    }
-	}
-	
-	if(bullets[i] == null) {
-	    continue;
-	}
-	bullets[i].draw();
-	bullets[i].updatePosition();
-    }
-
 }
 
 var preciseCollide = function (bul,ast,dist) {
