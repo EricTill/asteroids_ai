@@ -89,12 +89,14 @@ function player(x,y) {
     this.max_veloc = 8;
     this.score = 0;
     this.thrusting = false;
-    this.thrust_x_shape = [-14, -16.5, -14, -19, -14, -16.5, -14];
-    this.thrust_y_shape = [-6, -4, -2, 0, 2, 4, 6];
+    this.thrust_x_shape = [-14, -16, -14, -17, -14, -16, -14];
+    this.thrust_y_shape = [-3, -2, -1, 0, 1, 2, 3];
     this.thrust_x_adds = [];
     this.thrust_y_adds = [];
-    this.thrust_flicker_frames = 5;
+    this.thrust_flicker_frames = 3;
     this.thrust_lock = this.thrust_flicker_frames-1;
+    //Calculate max and min r for collision detection
+    
 }
 
 player.prototype.move = function(accel,dtheta) {
