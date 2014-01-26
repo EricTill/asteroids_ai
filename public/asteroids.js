@@ -238,7 +238,6 @@ bullet.prototype.updatePosition = function() {
 
     if (this.crossings > 1) {
 	deleteBullet(this.id);
-	null_buls.push(this.id);
     }
 
 }
