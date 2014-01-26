@@ -415,7 +415,7 @@ var deleteParticle = function(id) {
 
 var deleteAsteroid = function(id,shot) {
     if (shot) {
-	p.addScore(1);
+	p.addScore(1 * (level - 1));
 	//Create new asteroids where the last one blew up if it was big enough
 	if (asteroids[id].r >= 20) {
 	    var ast = asteroids[id];
@@ -589,7 +589,7 @@ var startNewLevel = function(wait,time_passed) {
     }
     else {
 	//TODO: Make sure asteroids don't spawn on top of player
-	for(var i = 0; i < level * 1; i++) {
+	for(var i = 0; i < level * 5; i++) {
 	    //                    x,                         y,                    r,               dx,              dy
 	    spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1));
 	}
@@ -599,10 +599,10 @@ var startNewLevel = function(wait,time_passed) {
 }
 
 var getControlInputs = function () {
-    if (pressed['A'.charCodeAt(0)] == true || touched) {
-	//                    x,                         y,                    r,               dx,              dy
-	spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1));
-    }
+    //if (pressed['A'.charCodeAt(0)] == true || touched) {
+    //	//                    x,                         y,                    r,               dx,              dy
+    //	spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1));
+    //}
 
     if (pressed[' '.charCodeAt(0)] == false) {
 	shoot_lock = false;
