@@ -62,6 +62,10 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 
 
 function player(x,y) {
+    this.visibility_cycle = 0.25*60; //measured in secs*60
+    this.visibility_cutoff = 0;
+    this.visible = true;
+    this.invulnerability = 0;
     this.extra_lives = 3;
     this.x = x;
     this.y = y;
@@ -105,6 +109,9 @@ player.prototype.move = function(accel,dtheta) {
 }
 
 player.prototype.updatePosition = function() {
+
+    this.invulnerability = this.invulnerability > 0 ? this.invulnerability-1 : 0;
+
     this.x += this.dx;
     this.y += this.dy;
     for(var i = 0; i < this.num_verts + 1; i++) {
@@ -127,34 +134,39 @@ player.prototype.updatePosition = function() {
 
 player.prototype.draw = function () {
 
-    //draw player's ship
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(this.x + this.x_adds[0], this.y + this.y_adds[0]);
-    for(var i=0; i<this.num_verts; i++){
-    	ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
-    }
-    ctx.stroke();
+    var ang = 2*pi*(this.invulnerability % this.visibility_cycle)/this.visibility_cycle;
+    this.visible = cos(ang) > this.visibility_cutoff;
 
-    //draw afterburners if player is thrusting
-    if(this.thrusting) {
-	this.thrust_lock++;
-	if((this.thrust_lock %= this.thrust_flicker_frames) == 0) {
-	    //ctx.strokeStyle = "#ff7722";
-	    ctx.beginPath();
-	    for(var i = 0; i < this.thrust_x_shape.length; i++) {
-		this.thrust_x_adds[i] = this.thrust_x_shape[i] * cos(this.theta) - this.thrust_y_shape[i] * sin(this.theta);
-		this.thrust_y_adds[i] = this.thrust_x_shape[i] * sin(this.theta) + this.thrust_y_shape[i] * cos(this.theta);
-	    }
-	    ctx.moveTo(this.x + this.thrust_x_adds[0], this.y + this.thrust_y_adds[0]);
-	    for(var i = 1; i<this.thrust_x_shape.length; i++) {
-		ctx.lineTo(this.x + this.thrust_x_adds[i], this.y + this.thrust_y_adds[i]);
-	    }
-	    ctx.stroke();
+    if(this.visible) {
+	//draw player's ship
+	ctx.strokeStyle = "#ffffff";
+	ctx.lineWidth = 1.5;
+	ctx.beginPath();
+	ctx.moveTo(this.x + this.x_adds[0], this.y + this.y_adds[0]);
+	for(var i=0; i<this.num_verts; i++){
+    	    ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
 	}
+	ctx.stroke();
+	
+	//draw afterburners if player is thrusting
+	if(this.thrusting) {
+	    this.thrust_lock++;
+	    if((this.thrust_lock %= this.thrust_flicker_frames) == 0) {
+		//ctx.strokeStyle = "#ff7722";
+		ctx.beginPath();
+		for(var i = 0; i < this.thrust_x_shape.length; i++) {
+		    this.thrust_x_adds[i] = this.thrust_x_shape[i] * cos(this.theta) - this.thrust_y_shape[i] * sin(this.theta);
+		    this.thrust_y_adds[i] = this.thrust_x_shape[i] * sin(this.theta) + this.thrust_y_shape[i] * cos(this.theta);
+		}
+		ctx.moveTo(this.x + this.thrust_x_adds[0], this.y + this.thrust_y_adds[0]);
+		for(var i = 1; i<this.thrust_x_shape.length; i++) {
+		    ctx.lineTo(this.x + this.thrust_x_adds[i], this.y + this.thrust_y_adds[i]);
+		}
+		ctx.stroke();
+	    }
+	}
+	ctx.lineWidth = 1;
     }
-    ctx.lineWidth = 1;
 
     this.displayScore();
     this.displayLives();
@@ -217,6 +229,7 @@ player.prototype.die = function () {
     }
     this.x = canvas.width/2;
     this.y = canvas.height/2;
+    this.invulnerability += 2*60;
 }
 
 
@@ -526,10 +539,13 @@ var updateGameState = function () {
     	    dist = sqrt((p.x-asteroids[i].x)*(p.x-asteroids[i].x) + (p.y-asteroids[i].y) * (p.y-asteroids[i].y));
     	    if(dist - p.max_r < asteroids[i].max_r) {
 		//TODO: Add particle blast where contact occurred
-    		p.die();
+		if(p.invulnerability <= 0) {
+    		    p.die(); //only die if player isn't invulnerable
+		}
     		deleteAsteroid(i);
     	    }
-    	}
+	}
+
 	if(asts_remaining <= 0) {
 	    startNewLevel(1.5*60,transition_time++); //f(level,wait-time) wait-time measured in secs*60
 	}
@@ -588,13 +604,18 @@ var startNewLevel = function(wait,time_passed) {
 	ctx.fillText("Level "+level.toString(),canvas.width/2,canvas.height/4);
     }
     else {
+	//Reinitialize some variables
+	asteroids = [];
+	null_asts = [];
+	particles = [];
+	null_pars = [];
+	transition_time = 0;
+	level++;
 	//TODO: Make sure asteroids don't spawn on top of player
 	for(var i = 0; i < level * 5; i++) {
 	    //                    x,                         y,                    r,               dx,              dy
 	    spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1));
 	}
-	transition_time = 0;
-	level++;
     }
 }
 
