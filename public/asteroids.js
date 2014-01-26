@@ -66,6 +66,7 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 
 
 function player(x,y) {
+    this.extra_lives = 3;
     this.x = x;
     this.y = y;
     this.x_adds = [];
@@ -86,13 +87,12 @@ function player(x,y) {
     this.thrust_y_adds = [];
     this.thrust_flicker_frames = 3;
     this.thrust_lock = this.thrust_flicker_frames-1;
-    //Calculate max and min r for collision detection
-    this.max_r;
-    this.min_r;
     this.vert_rs = [];
     for(var i = 0; i<this.x_shape.length; i++) {
 	this.vert_rs.push(sqrt(this.x_shape[i] * this.x_shape[i] + this.y_shape[i] * this.y_shape[i]))
     }
+    this.max_r = Math.max.apply(Math,this.vert_rs);
+    this.min_r = Math.min.apply(Math,this.vert_rs);
 }
 
 player.prototype.move = function(accel,dtheta) {
@@ -159,6 +159,9 @@ player.prototype.draw = function () {
 	}
     }
     ctx.lineWidth = 1;
+
+    this.displayScore();
+    this.displayLives();
 }
 
 player.prototype.displayVeloc = function () {
@@ -203,6 +206,21 @@ player.prototype.displayScore = function() {
     ctx.font = "20px LucidaConsole";
     ctx.fillStyle = "#ffffff";
     ctx.fillText(this.score.toString(),canvas.width/2,30);
+}
+
+player.prototype.displayLives = function() {
+    ctx.font = "20px LucidaConsole";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("Extra lives: "+this.extra_lives.toString(),canvas.width/5,30);
+}
+
+player.prototype.die = function () {
+    this.extra_lives--;
+    if(this.extra_lives < 0) {
+	console.log("you loose!");
+    }
+    this.x = canvas.width/2;
+    this.y = canvas.height/2;
 }
 
 
@@ -315,7 +333,7 @@ asteroid.prototype.draw = function () {
 };
 
 //Updates the position of an asteroid
-asteroid.prototype.updatePosition = function (scale) {
+asteroid.prototype.updatePosition = function () {
     //this.x_veloc = min(this.x_veloc, this.max_veloc);
     //this.y_veloc = min(this.y_veloc, this.max_veloc);
     this.x += this.x_veloc;
@@ -485,8 +503,6 @@ var null_pars = [];
 var updateGameState = function () {
 
     //ticktock(frame++);
-    p.displayScore();
-    
     getControlInputs();
 
     p.updatePosition();
@@ -498,7 +514,14 @@ var updateGameState = function () {
 	    continue;
 	}
         asteroids[i].draw();
-        asteroids[i].updatePosition(15);
+        asteroids[i].updatePosition();
+
+	//perform hit detection on player
+	dist = sqrt((p.x-asteroids[i].x)*(p.x-asteroids[i].x) + (p.y-asteroids[i].y) * (p.y-asteroids[i].y));
+	if(dist - p.max_r < asteroids[i].max_r) {
+	    p.die();
+	    deleteAsteroid(i);
+	}
     }
 
     //Loop over all (non-null) bullets, perform collision detection on all asteroids, render them and then update their positions
