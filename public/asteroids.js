@@ -436,19 +436,22 @@ var deleteAsteroid = function(id,shot) {
 var deleteBullet = function(id) {
     if(bullets[id].crossings < 2) {
 	for(var i = 0; i <= getRandInt(10,20); i++){
-	    if(null_pars.length > 0) {
-		var curr_id = null_pars.pop();
-		particles[curr_id] = new particle(bullets[id].x,bullets[id].y,curr_id)
-	    }
-	    else {
-		particles.push(new particle(bullets[id].x,bullets[id].y,particles.length));
-	    }
+	    spawnParticle(bullets[id].x,bullets[id].y);
 	}
     }
     bullets[id] = null;
     null_buls.push(id);
 }
 
+var spawnParticle = function(x,y) {
+    if(null_pars.length > 0) {
+	var curr_id = null_pars.pop();
+	particles[curr_id] = new particle(x,y,curr_id)
+    }
+    else {
+	particles.push(new particle(x,y,particles.length));
+    }
+}
 var spawnAsteroid = function(x,y,r,dx,dy) {
     //Only push new elements if there aren't any free null ones
     if(null_asts.length > 0) {
@@ -495,10 +498,14 @@ var p = new player(canvas.width/2,canvas.height/2);
 var null_asts = [];
 var null_buls = [];
 var null_pars = [];
+var asts_remaining = 0;
+var level = 1;
+var transition_time = 0;
 
 var updateGameState = function () {
 
     if (p.extra_lives >= 0) {
+
     	//ticktock(frame++);
     	getControlInputs();
     	
@@ -506,20 +513,26 @@ var updateGameState = function () {
     	p.draw();
     	
     	//Loop over all (non-null) asteroids, render them, and update their positions
+	asts_remaining = 0;
     	for (var i = 0; i < asteroids.length; i++) {
     	    if(asteroids[i] == null) {
     		continue;
     	    }
     	    asteroids[i].draw();
     	    asteroids[i].updatePosition();
+	    asts_remaining++;
     	    
     	    //perform hit detection on player
     	    dist = sqrt((p.x-asteroids[i].x)*(p.x-asteroids[i].x) + (p.y-asteroids[i].y) * (p.y-asteroids[i].y));
     	    if(dist - p.max_r < asteroids[i].max_r) {
+		//TODO: Add particle blast where contact occurred
     		p.die();
     		deleteAsteroid(i);
     	    }
     	}
+	if(asts_remaining <= 0) {
+	    startNewLevel(1.5*60,transition_time++); //f(level,wait-time) wait-time measured in secs*60
+	}
     	
     	//Loop over all (non-null) bullets, perform collision detection on all asteroids, render them and then update their positions
     	for(var i = 0; i < bullets.length; i++){
@@ -565,10 +578,30 @@ var updateGameState = function () {
     }
 }
 
+var startNewLevel = function(wait,time_passed) {
+    console.log(level,transition_time);
+    //Wait a while to spawn in the asteroids and let player know what level they're on
+    if(time_passed < wait) {
+	//Display what level you're on
+	ctx.font = "20px LucidaConsole";
+	ctx.fillStyle = "#ffffff";
+	ctx.fillText("Level "+level.toString(),canvas.width/2,canvas.height/4);
+    }
+    else {
+	//TODO: Make sure asteroids don't spawn on top of player
+	for(var i = 0; i < level * 1; i++) {
+	    //                    x,                         y,                    r,               dx,              dy
+	    spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1));
+	}
+	transition_time = 0;
+	level++;
+    }
+}
+
 var getControlInputs = function () {
     if (pressed['A'.charCodeAt(0)] == true || touched) {
 	//                    x,                         y,                    r,               dx,              dy
-	spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1))
+	spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1));
     }
 
     if (pressed[' '.charCodeAt(0)] == false) {
