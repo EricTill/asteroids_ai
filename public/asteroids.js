@@ -87,7 +87,12 @@ function player(x,y) {
     this.thrust_flicker_frames = 3;
     this.thrust_lock = this.thrust_flicker_frames-1;
     //Calculate max and min r for collision detection
-    
+    this.max_r;
+    this.min_r;
+    this.vert_rs = [];
+    for(var i = 0; i<this.x_shape.length; i++) {
+	this.vert_rs.push(sqrt(this.x_shape[i] * this.x_shape[i] + this.y_shape[i] * this.y_shape[i]))
+    }
 }
 
 player.prototype.move = function(accel,dtheta) {
@@ -99,37 +104,8 @@ player.prototype.move = function(accel,dtheta) {
     this.theta += dtheta;
     this.theta = circConstrain(this.theta);
 
-    //console.log(this.theta);
-
-    //Handle new velocity. Involves some compliated so that a maximum
-    //velocity can be sensibly imposed.
-    //First, calculate the new target velocity.
-    tar_dx = this.dx + accel * cos(this.theta);
-    tar_dy = this.dy + accel * sin(this.theta);
-    speed = sqrt(tar_dx*tar_dx,tar_dy*tar_dy);
-    
-    //if (speed < this.max_veloc) {
-	this.dx = tar_dx;
-	this.dy = tar_dy;
-    //}; 
-
-    //If your speed is maxed out, but you're thrusting this
-    //will allow you to begin to go in the direction that you're pointing.
-    non_zero_v = this.dx != 0 ? this.dx : this.dy;
-    theta_func = this.dx != 0 ? Math.acos : Math.asin;
-    //console.log(theta_func(pi));
-    veloc_theta = this.dx != 0 ? Math.acos(this.dx) : Math.asin(this.dy);
-    veloc_theta %= pi;
-    var test = this.dx != 0 ? 'x' : 'y';
-    //console.log(Math.acos(this.dx),Math.asin(this.dy),':',Math.acos(this.dx/speed),Math.asin(this.dy/speed),':',test,this.dx,',',this.dy);
-    angular_v = (this.theta - veloc_theta)/2;
-    //console.log(veloc_theta,':',this.theta,':',angular_v);
-    //p.displayTheta(veloc_theta,"#FFDDFF");
-    //p.displayTheta(angular_v + veloc_theta,"#00DDFF");
-    //if (speed >= this.max_veloc && (veloc_theta != this.theta)) {
-    //	this.dx = speed * cos(veloc_theta + angular_v);
-    //	this.dy = speed * sin(veloc_theta + angular_v);
-    //};
+    this.dx = this.dx + accel * cos(this.theta);
+    this.dy = this.dy + accel * sin(this.theta); 
 }
 
 player.prototype.updatePosition = function() {
@@ -276,15 +252,13 @@ bullet.prototype.draw = function () {
 }
 
 //Asteroid object definition:
-function asteroid(x, y, r, max_veloc, alpha, id, color) {
+function asteroid(x, y, r, dx, dy, id) {
     this.x = x;
     this.y = y;
     this.r = r;
-    this.max_veloc = max_veloc;
-    this.alpha = 0;
-    this.color = color;
-    this.x_veloc = 10*getUnif(-1,1);
-    this.y_veloc = 10*getUnif(-1,1);
+    this.max_veloc = 40;
+    this.x_veloc = dx;
+    this.y_veloc = dy;
     this.id = id
     this.friction = 1;
     this.max_r;
@@ -343,11 +317,10 @@ asteroid.prototype.draw = function () {
 
 //Updates the position of an asteroid
 asteroid.prototype.updatePosition = function (scale) {
-    //Update positions - make sure dot stays on canvas
     //this.x_veloc = min(this.x_veloc, this.max_veloc);
     //this.y_veloc = min(this.y_veloc, this.max_veloc);
-    this.x += this.x_veloc * delta_t;
-    this.y += this.y_veloc * delta_t;
+    this.x += this.x_veloc;
+    this.y += this.y_veloc;
 
     //Edge collision detection
     if (this.x > canvas.width) {
@@ -375,7 +348,7 @@ function particle(x,y,id) {
     this.age = 0;
     this.theta = circConstrain(getUnif(0,2*pi));
     this.alpha = 1;
-    this.lifespan = 0.6*60; //seconds_alive*60
+    this.lifespan = 0.2*60; //seconds_alive*60
     this.speed = getUnif(3,7);
     this.x = x;
     this.y = y;
@@ -430,8 +403,21 @@ var deleteParticle = function(id) {
 var deleteAsteroid = function(id,shot) {
     if (shot) {
 	p.addScore(1);
+	//Create new asteroids where the last one blew up if it was big enough
+	if (asteroids[id].r >= 20) {
+	    var ast = asteroids[id];
+	    //var n = floor(ast.r/10) + getRandInt(0,2);
+	    var n = getRandInt(2,3) + floor(ast.r/40);
+	    for(var i = 0; i < n; i++) {
+		//                   x                                        y
+		spawnAsteroid(ast.x+getUnif(-ast.max_r/n,ast.max_r/n), ast.y+getUnif(-ast.max_r/n,ast.max_r/n),
+			      max(getUnif(ast.r/n,ast.r*(n-1)/n),15), ast.x_veloc+getUnif(-1,1), ast.y_veloc+getUnif(-1,1));
+		//                     r                                         dx                    dy
+	    }
+	}
     }
     asteroids[id] = null;
+    null_asts.push(id);
 }
 
 var deleteBullet = function(id) {
@@ -447,6 +433,18 @@ var deleteBullet = function(id) {
 	}
     }
     bullets[id] = null;
+    null_buls.push(id);
+}
+
+var spawnAsteroid = function(x,y,r,dx,dy) {
+    //Only push new elements if there aren't any free null ones
+    if(null_asts.length > 0) {
+	var curr_id = null_asts.pop();
+	asteroids[curr_id] = new asteroid(x, y, r, dx, dy, curr_id);
+    }
+    else {
+        asteroids.push(new asteroid(x, y, r, dx, dy, asteroids.length-1));
+    }    
 }
 
 //Creates the controler events
@@ -471,17 +469,13 @@ var circConstrain = function (theta) {
 }
 
 
-var x;
-var y;
-var r;
-var color;
 var up;
 var down;
 var left;
 var right;
 var shoot_lock = false;
 var frame = 0;
-var dtheta = (2*pi/(60*1.3)); //measured in sections needed to turn the ship 360 degrees
+var dtheta = (2*pi/(60*1.6)); //measured in sections needed to turn the ship 360 degrees
 getSetStageSize(1, 1);
 var dist;
 var p = new player(canvas.width/2,canvas.height/2);
@@ -523,8 +517,6 @@ var updateGameState = function () {
 		if(dist <= asteroids[j].min_r || preciseCollide(bullets[i],asteroids[j],dist)) {
 		    deleteAsteroid(j,true);
 		    deleteBullet(i);
-		    null_asts.push(j);
-		    null_buls.push(i);
 		    continue;
 		}
 	    }
@@ -549,18 +541,8 @@ var updateGameState = function () {
 
 var getControlInputs = function () {
     if (pressed['A'.charCodeAt(0)] == true || touched) {
-        x = getUnif(0,canvas.width);
-        y = getUnif(0,canvas.height);
-        r = getUnif(20,50);
-        color = [1, 1, 1];
-	//Only push new elements if there aren't any free null ones
-	if(null_asts.length > 0) {
-	    var curr_id = null_asts.pop();
-	    asteroids[curr_id] = new asteroid(x, y, r, 20, 1, curr_id, color);
-	}
-	else {
-            asteroids.push(new asteroid(x, y, r, 20, 1, asteroids.length-1, color));
-	}
+	//                    x,                         y,                    r,               dx,              dy
+	spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1))
     }
 
     if (pressed[' '.charCodeAt(0)] == false) {
