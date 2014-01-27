@@ -464,9 +464,12 @@ var spawnParticle = function(x,y) {
 }
 
 var spawnAsteroid = function(x,y,r,dx,dy,min_dist) {
-    if(abs(x - p.x) < (min_dist + p.max_r + r) && abs(y - p.y) < (min_dist + p.max_r + r)) {
-	x = moveAwayFromPoint(x,min_dist + p.max_r + r,canvas.width);
-	y = moveAwayFromPoint(y,min_dist + p.max_r + r,canvas.height);
+    if (min_dist > 0) {
+	var dist = sqrt((x-p.x)*(x-p.x) + (y-p.y)*(y-p.y));
+	if(dist - p.max_r - r < min_dist) {
+	    x = moveAwayFromPoint(x, p.x, min_dist + p.max_r + r, canvas.width);
+	    y = moveAwayFromPoint(y, p.y, min_dist + p.max_r + r, canvas.height);
+	}
     }
     //Only push new elements if there aren't any free null ones
     if(null_asts.length > 0) {
@@ -479,9 +482,16 @@ var spawnAsteroid = function(x,y,r,dx,dy,min_dist) {
 }
 
 
-var moveAwayFromPoint = function(point,dist,dim) {
-    var temp = point + pow(-1,getRandInt(0,1)) * dist;
-    return temp - dim * floor(temp/dim);
+var moveAwayFromPoint = function(point,orig,dist,dim) {
+    var flip = point < orig ? -1 : 1;
+    var temp = point + flip * dist;
+    if (temp > dim) {
+	return dim;
+    }
+    else if(temp < 0) {
+	return 0;
+    }
+    return temp;
 }
 
 
@@ -523,6 +533,7 @@ var null_pars = [];
 var asts_remaining = 0;
 var level = 1;
 var transition_time = 0;
+var asts_per_level = 5;
 
 var updateGameState = function () {
 
@@ -618,12 +629,12 @@ var startNewLevel = function(wait,time_passed) {
 	particles = [];
 	null_pars = [];
 	transition_time = 0;
-	level++;
 	//TODO: Make sure asteroids don't spawn on top of player
-	for(var i = 0; i < level * 1; i++) {
-	    //              x,     y,         r,               dx,              dy     min_dist
-	    spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1),60);
+	for(var i = 0; i < level * asts_per_level; i++) {
+	    //              x,                              y,                    r,               dx,              dy     min_dist
+	    spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1),100);
 	}
+	level++;
     }
 }
 
