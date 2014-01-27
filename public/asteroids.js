@@ -224,9 +224,6 @@ player.prototype.displayLives = function() {
 
 player.prototype.die = function () {
     this.extra_lives--;
-    if(this.extra_lives < 0) {
-	console.log("you loose!");
-    }
     this.x = canvas.width/2;
     this.y = canvas.height/2;
     this.invulnerability += 2*60;
@@ -437,8 +434,8 @@ var deleteAsteroid = function(id,shot) {
 	    for(var i = 0; i < n; i++) {
 		//                   x                                        y
 		spawnAsteroid(ast.x+getUnif(-ast.max_r/n,ast.max_r/n), ast.y+getUnif(-ast.max_r/n,ast.max_r/n),
-			      max(getUnif(ast.r/n,ast.r*(n-1)/n),15), ast.x_veloc+getUnif(-1,1), ast.y_veloc+getUnif(-1,1));
-		//                     r                                         dx                    dy
+			      max(getUnif(ast.r/n,ast.r*(n-1)/n),15), ast.x_veloc+getUnif(-1,1), ast.y_veloc+getUnif(-1,1), 0);
+		//                     r                                         dx                    dy                  min_dist
 	    }
 	}
     }
@@ -465,7 +462,12 @@ var spawnParticle = function(x,y) {
 	particles.push(new particle(x,y,particles.length));
     }
 }
-var spawnAsteroid = function(x,y,r,dx,dy) {
+
+var spawnAsteroid = function(x,y,r,dx,dy,min_dist) {
+    if(abs(x - p.x) < (min_dist + p.max_r + r) && abs(y - p.y) < (min_dist + p.max_r + r)) {
+	x = moveAwayFromPoint(x,min_dist + p.max_r + r,canvas.width);
+	y = moveAwayFromPoint(y,min_dist + p.max_r + r,canvas.height);
+    }
     //Only push new elements if there aren't any free null ones
     if(null_asts.length > 0) {
 	var curr_id = null_asts.pop();
@@ -475,6 +477,13 @@ var spawnAsteroid = function(x,y,r,dx,dy) {
         asteroids.push(new asteroid(x, y, r, dx, dy, asteroids.length-1));
     }    
 }
+
+
+var moveAwayFromPoint = function(point,dist,dim) {
+    var temp = point + pow(-1,getRandInt(0,1)) * dist;
+    return temp - dim * floor(temp/dim);
+}
+
 
 //Creates the controler events
 var setup = function () {
@@ -595,7 +604,6 @@ var updateGameState = function () {
 }
 
 var startNewLevel = function(wait,time_passed) {
-    console.log(level,transition_time);
     //Wait a while to spawn in the asteroids and let player know what level they're on
     if(time_passed < wait) {
 	//Display what level you're on
@@ -612,9 +620,9 @@ var startNewLevel = function(wait,time_passed) {
 	transition_time = 0;
 	level++;
 	//TODO: Make sure asteroids don't spawn on top of player
-	for(var i = 0; i < level * 5; i++) {
-	    //                    x,                         y,                    r,               dx,              dy
-	    spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1));
+	for(var i = 0; i < level * 1; i++) {
+	    //              x,     y,         r,               dx,              dy     min_dist
+	    spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1),60);
 	}
     }
 }
