@@ -226,6 +226,8 @@ player.prototype.die = function () {
     this.extra_lives--;
     this.x = canvas.width/2;
     this.y = canvas.height/2;
+    this.dx = 0;
+    this.dy = 0;
     this.invulnerability += 2*60;
 }
 
@@ -562,7 +564,7 @@ var updateGameState = function () {
 		if(p.invulnerability <= 0) {
     		    p.die(); //only die if player isn't invulnerable
 		}
-    		deleteAsteroid(i);
+    		deleteAsteroid(i,false);
     	    }
 	}
 
