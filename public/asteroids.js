@@ -655,10 +655,10 @@ var getControlInputs = function () {
     }
     
     //use arrow keys to move player around
-    up = pressed[38] ? 1 : 0;
-    down = pressed[40] ? 1 : 0;
-    left = pressed[37] ? 1 : 0;
-    right = pressed[39] ? 1 : 0;
+    up = pressed[38] || pressed['W'.charCodeAt(0)] ? 1 : 0;
+    down = pressed[40] || pressed['S'.charCodeAt(0)] ? 1 : 0;
+    left = pressed[37] || pressed['A'.charCodeAt(0)] ? 1 : 0;
+    right = pressed[39] || pressed['D'.charCodeAt(0)] ? 1 : 0;
 
     //For thrust "animation" on player
     p.thrusting = up;
