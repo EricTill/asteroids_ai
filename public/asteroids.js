@@ -62,6 +62,8 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 
 
 function player(x,y) {
+    this.respawn_time = 4*60; //secs*60
+    this.death_timer = 0;
     this.visibility_cycle = 0.25*60; //measured in secs*60
     this.visibility_cutoff = 0;
     this.visible = true;
@@ -74,6 +76,7 @@ function player(x,y) {
     this.x_shape = [14, -14, -7, -14, 14];
     this.y_shape = [0, -7, 0, 7, 0];
     this.num_verts = 4;
+    this.alpha = 1;
     this.color = [1, 1, 1];
     this.dx = 0;
     this.dy = 0;
@@ -88,11 +91,23 @@ function player(x,y) {
     this.thrust_flicker_frames = 3;
     this.thrust_lock = this.thrust_flicker_frames-1;
     this.vert_rs = [];
+    this.death_rotation_speeds = [];
+    this.death_thetas = [];
+    this.x_adds_midpoints = [];
+    this.y_adds_midpoints = [];
+    this.shape_thetas = [];
     for(var i = 0; i<this.x_shape.length; i++) {
-	this.vert_rs.push(sqrt(this.x_shape[i] * this.x_shape[i] + this.y_shape[i] * this.y_shape[i]))
+	this.vert_rs.push(sqrt(this.x_shape[i] * this.x_shape[i] + this.y_shape[i] * this.y_shape[i]));
+	this.shape_thetas.push(circConstrain(atan2(this.y_shape[i]-this.y,this.x_shape[i]-this.x)));
     }
     this.max_r = Math.max.apply(Math,this.vert_rs);
     this.min_r = Math.min.apply(Math,this.vert_rs);
+    for(var i = 0; i<this.x_shape.length-1; i++) {
+	this.x_adds_midpoints.push(0);
+	this.y_adds_midpoints.push(0);
+	this.death_rotation_speeds.push(0);
+	this.death_thetas.push(0);
+    }
 }
 
 player.prototype.move = function(accel,dtheta) {
@@ -110,13 +125,36 @@ player.prototype.move = function(accel,dtheta) {
 
 player.prototype.updatePosition = function() {
 
+    if(this.death_timer > 0) {
+	this.death_timer++;
+	if(this.death_timer > this.respawn_time) {
+	    this.death_timer = 0;
+	    this.respawn();
+	}
+    }
+
     this.invulnerability = this.invulnerability > 0 ? this.invulnerability-1 : 0;
 
     this.x += this.dx;
     this.y += this.dy;
+
     for(var i = 0; i < this.num_verts + 1; i++) {
 	this.x_adds[i] = this.x_shape[i] * cos(this.theta) - this.y_shape[i] * sin(this.theta);
 	this.y_adds[i] = this.x_shape[i] * sin(this.theta) + this.y_shape[i] * cos(this.theta);
+    }
+
+    if(this.death_timer > 0) {
+	for(var i = 0; i < this.x_adds_midpoints.length; i++) {
+	    this.x_adds_midpoints[i] = (this.x_adds[i]+this.x_adds[i+1])/2;
+	    this.y_adds_midpoints[i] = (this.y_adds[i]+this.y_adds[i+1])/2;
+	}
+    }
+
+    if(this.thrusting) {
+	for(var i = 0; i < this.thrust_x_shape.length; i++) {
+	    this.thrust_x_adds[i] = this.thrust_x_shape[i] * cos(this.theta) - this.thrust_y_shape[i] * sin(this.theta);
+	    this.thrust_y_adds[i] = this.thrust_x_shape[i] * sin(this.theta) + this.thrust_y_shape[i] * cos(this.theta);
+	}
     }
 
     if (this.x > canvas.width) {
@@ -129,7 +167,7 @@ player.prototype.updatePosition = function() {
         this.y %= canvas.height;
     } else if (this.y < 0) {
         this.y = canvas.height;
-    };
+     };
 }
 
 player.prototype.draw = function () {
@@ -139,35 +177,83 @@ player.prototype.draw = function () {
 
     if(this.visible) {
 	//draw player's ship
-	ctx.strokeStyle = "#ffffff";
 	ctx.lineWidth = 1.5;
-	ctx.beginPath();
-	ctx.moveTo(this.x + this.x_adds[0], this.y + this.y_adds[0]);
-	for(var i=0; i<this.num_verts; i++){
-    	    ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
-	}
-	ctx.stroke();
-	
-	//draw afterburners if player is thrusting
-	if(this.thrusting) {
-	    this.thrust_lock++;
-	    if((this.thrust_lock %= this.thrust_flicker_frames) == 0) {
-		//ctx.strokeStyle = "#ff7722";
+
+	//player is in the middle of a death animation
+	if(this.death_timer > 0) {
+	    var x1,x2,y1,y2,prior_dist,post_dist;
+	    ctx.strokeStyle="rgba(255,255,255,"+((this.respawn_time-this.death_timer+1)/this.respawn_time)+")";
+	    for(var i = 0; i<this.x_adds_midpoints.length; i++) {
+
+		//Draw centers...
+		//ctx.fillStyle = "#ff0000";
+		//ctx.lineWidth = 1;
+		//ctx.beginPath();
+		//ctx.arc(this.x+this.x_adds_midpoints[i],this.y+this.y_adds_midpoints[i],2,0,2*pi);
+		//ctx.fill();
+		//ctx.strokeStyle="rgba(255,255,255,"+((this.respawn_time-this.death_timer+1)/this.respawn_time)+")";
+
+		//Update death angles
+		this.death_thetas[i] = circConstrain(this.death_thetas[i] + this.death_rotation_speeds[i]);
+		
+		//Shift relative to midpoint for rotation
+		x1 = (this.x_adds[i] - this.x_adds_midpoints[i]);
+		x2 = (this.x_adds[i+1] - this.x_adds_midpoints[i]);
+		y1 = (this.y_adds[i] - this.y_adds_midpoints[i]);
+		y2 = (this.y_adds[i+1] - this.y_adds_midpoints[i]);
+		prior_dist = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+
+		//apply rotation matrix
+		x1 = x1 * cos(this.death_thetas[i]) - y1 * sin(this.death_thetas[i]);
+		x2 = x2 * cos(this.death_thetas[i]) - y2 * sin(this.death_thetas[i]);
+		y1 = x1 * sin(this.death_thetas[i]) + y1 * cos(this.death_thetas[i]);
+		y2 = x2 * sin(this.death_thetas[i]) + y2 * cos(this.death_thetas[i]);
+
+		//Shift back relative to midpoints
+		x1 = (x1 + this.x_adds_midpoints[i]);
+		x2 = (x2 + this.x_adds_midpoints[i]);
+		y1 = (y1 + this.y_adds_midpoints[i]);
+		y2 = (y2 + this.y_adds_midpoints[i]);
+		post_dist = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+		//x1 *= prior_dist/post_dist;
+		//x2 *= prior_dist/post_dist;
+		//y1 *= prior_dist/post_dist;
+		//y2 *= prior_dist/post_dist;
+
+		//Draw line
 		ctx.beginPath();
-		for(var i = 0; i < this.thrust_x_shape.length; i++) {
-		    this.thrust_x_adds[i] = this.thrust_x_shape[i] * cos(this.theta) - this.thrust_y_shape[i] * sin(this.theta);
-		    this.thrust_y_adds[i] = this.thrust_x_shape[i] * sin(this.theta) + this.thrust_y_shape[i] * cos(this.theta);
-		}
-		ctx.moveTo(this.x + this.thrust_x_adds[0], this.y + this.thrust_y_adds[0]);
-		for(var i = 1; i<this.thrust_x_shape.length; i++) {
-		    ctx.lineTo(this.x + this.thrust_x_adds[i], this.y + this.thrust_y_adds[i]);
-		}
+		ctx.moveTo(x1 + p.x, y1 + p.y);
+		ctx.lineTo(x2 + p.x, y2 + p.y);
 		ctx.stroke();
+	    }
+	}
+	
+	//player is normal or has just respawned
+	else {
+	    ctx.strokeStyle = "#ffffff";
+	    ctx.beginPath();
+	    ctx.moveTo(this.x + this.x_adds[0], this.y + this.y_adds[0]);
+	    for(var i=0; i<this.num_verts; i++){
+    		ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
+	    }
+	    ctx.stroke();
+	    
+	    //draw afterburners if player is thrusting
+	    if(this.thrusting) {
+		this.thrust_lock++;
+		if((this.thrust_lock %= this.thrust_flicker_frames) == 0) {
+		    ctx.beginPath();
+		    ctx.moveTo(this.x + this.thrust_x_adds[0], this.y + this.thrust_y_adds[0]);
+		    for(var i = 1; i<this.thrust_x_shape.length; i++) {
+			ctx.lineTo(this.x + this.thrust_x_adds[i], this.y + this.thrust_y_adds[i]);
+		    }
+		    ctx.stroke();
+		}
 	    }
 	}
 	ctx.lineWidth = 1;
     }
-
+    
     this.displayScore();
     this.displayLives();
 }
@@ -223,12 +309,20 @@ player.prototype.displayLives = function() {
 }
 
 player.prototype.die = function () {
+    this.death_timer++;
+    for(var i = 0; i<this.x_adds_midpoints.length; i++) {
+	this.death_rotation_speeds[i] = getUnif(-0.02,0.02);
+	this.death_thetas[i] = 0;
+    }
+}
+
+player.prototype.respawn = function() {
     this.extra_lives--;
     this.x = canvas.width/2;
     this.y = canvas.height/2;
     this.dx = 0;
     this.dy = 0;
-    this.invulnerability += 2*60;
+    this.invulnerability += 2*60;    
 }
 
 
@@ -542,8 +636,10 @@ var updateGameState = function () {
     if (p.extra_lives >= 0) {
 
     	//ticktock(frame++);
-    	getControlInputs();
-    	
+	if(p.death_timer <= 0) {
+    	    getControlInputs();
+    	}
+
     	p.updatePosition();
     	p.draw();
     	
@@ -557,15 +653,17 @@ var updateGameState = function () {
     	    asteroids[i].updatePosition();
 	    asts_remaining++;
     	    
-    	    //perform hit detection on player
-    	    dist = sqrt((p.x-asteroids[i].x)*(p.x-asteroids[i].x) + (p.y-asteroids[i].y) * (p.y-asteroids[i].y));
-    	    if(dist - p.max_r < asteroids[i].max_r) {
-		//TODO: Add particle blast where contact occurred
-		if(p.invulnerability <= 0) {
-    		    p.die(); //only die if player isn't invulnerable
-		}
-    		deleteAsteroid(i,false);
-    	    }
+	    if(p.death_timer <= 0) {
+    		//perform hit detection on player
+    		dist = sqrt((p.x-asteroids[i].x)*(p.x-asteroids[i].x) + (p.y-asteroids[i].y) * (p.y-asteroids[i].y));
+    		if(dist - p.max_r < asteroids[i].max_r) {
+		    //TODO: Add particle blast where contact occurred
+		    if(p.invulnerability <= 0) {
+    			p.die(); //only die if player isn't invulnerable
+		    }
+    		    deleteAsteroid(i,false);
+    		}
+	    }
 	}
 
 	if(asts_remaining <= 0) {
@@ -641,10 +739,6 @@ var startNewLevel = function(wait,time_passed) {
 }
 
 var getControlInputs = function () {
-    //if (pressed['A'.charCodeAt(0)] == true || touched) {
-    //	//                    x,                         y,                    r,               dx,              dy
-    //	spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1));
-    //}
 
     if (pressed[' '.charCodeAt(0)] == false) {
 	shoot_lock = false;
@@ -659,10 +753,10 @@ var getControlInputs = function () {
     down = pressed[40] || pressed['S'.charCodeAt(0)] ? 1 : 0;
     left = pressed[37] || pressed['A'.charCodeAt(0)] ? 1 : 0;
     right = pressed[39] || pressed['D'.charCodeAt(0)] ? 1 : 0;
-
+    
     //For thrust "animation" on player
+    
     p.thrusting = up;
-
     p.move(0.1 * (up - down), dtheta * (right - left));
     //p.displayVeloc();
     //p.displayTheta(p.theta);
