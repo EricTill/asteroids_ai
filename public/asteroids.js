@@ -58,7 +58,7 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 
     canvas.width = horz_percent * body_width;
     canvas.height = vert_percent * body_height;
-}
+};
 
 
 function player(x,y) {
@@ -102,7 +102,7 @@ function player(x,y) {
     }
     this.max_r = Math.max.apply(Math,this.vert_rs);
     this.min_r = Math.min.apply(Math,this.vert_rs);
-    for(var i = 0; i<this.x_shape.length-1; i++) {
+    for(i = 0; i<this.x_shape.length-1; i++) {
 	this.x_adds_midpoints.push(0);
 	this.y_adds_midpoints.push(0);
 	this.death_rotation_speeds.push(0);
@@ -168,7 +168,7 @@ player.prototype.updatePosition = function() {
     } else if (this.y < 0) {
         this.y = canvas.height;
      };
-}
+};
 
 player.prototype.draw = function () {
 
@@ -323,7 +323,7 @@ player.prototype.respawn = function() {
     this.dx = 0;
     this.dy = 0;
     this.invulnerability += 2*60;    
-}
+};
 
 
 function bullet(x,y,r,dx,dy,id) {
@@ -451,7 +451,7 @@ asteroid.prototype.displayTheta = function (th,color,len) {
     ctx.moveTo(this.x,this.y);
     ctx.lineTo(this.x + len*cos(th),this.y + len*sin(th));
     ctx.stroke();
-}
+};
 
 function particle(x,y,id) {
     this.age = 0;
