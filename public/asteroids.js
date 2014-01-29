@@ -31,13 +31,13 @@ var exp = Math.exp;
 //Return a real min to max (inclusive)
 var getUnif = function(a, b) {
     return rand() * (b - a) + a;
-}
+};
 
 
 //Return an integer min to max (inclusive)
 var getRandInt = function(a,b) {
     return round(getUnif(a,b));
-}
+};
 
 
 //Emulate a normal distribution - this uses the central limit theorem (the more iterations, the closer to a true normal it will be)
@@ -47,7 +47,7 @@ var getNorm = function(mean, iterations) {
         output += rand() * mean;
     }
     return output / iterations;
-}
+};
 
 //Runs every frame to adjust to resizing windows
 var body_height;
@@ -121,7 +121,7 @@ player.prototype.move = function(accel,dtheta) {
 
     this.dx = this.dx + accel * cos(this.theta);
     this.dy = this.dy + accel * sin(this.theta); 
-}
+};
 
 player.prototype.updatePosition = function() {
 
@@ -144,14 +144,14 @@ player.prototype.updatePosition = function() {
     }
 
     if(this.death_timer > 0) {
-	for(var i = 0; i < this.x_adds_midpoints.length; i++) {
+	for(i = 0; i < this.x_adds_midpoints.length; i++) {
 	    this.x_adds_midpoints[i] = (this.x_adds[i]+this.x_adds[i+1])/2;
 	    this.y_adds_midpoints[i] = (this.y_adds[i]+this.y_adds[i+1])/2;
 	}
     }
 
     if(this.thrusting) {
-	for(var i = 0; i < this.thrust_x_shape.length; i++) {
+	for(i = 0; i < this.thrust_x_shape.length; i++) {
 	    this.thrust_x_adds[i] = this.thrust_x_shape[i] * cos(this.theta) - this.thrust_y_shape[i] * sin(this.theta);
 	    this.thrust_y_adds[i] = this.thrust_x_shape[i] * sin(this.theta) + this.thrust_y_shape[i] * cos(this.theta);
 	}
@@ -233,7 +233,7 @@ player.prototype.draw = function () {
 	    ctx.strokeStyle = "#ffffff";
 	    ctx.beginPath();
 	    ctx.moveTo(this.x + this.x_adds[0], this.y + this.y_adds[0]);
-	    for(var i=0; i<this.num_verts; i++){
+	    for(i=0; i<this.num_verts; i++){
     		ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
 	    }
 	    ctx.stroke();
@@ -244,7 +244,7 @@ player.prototype.draw = function () {
 		if((this.thrust_lock %= this.thrust_flicker_frames) == 0) {
 		    ctx.beginPath();
 		    ctx.moveTo(this.x + this.thrust_x_adds[0], this.y + this.thrust_y_adds[0]);
-		    for(var i = 1; i<this.thrust_x_shape.length; i++) {
+		    for(i = 1; i<this.thrust_x_shape.length; i++) {
 			ctx.lineTo(this.x + this.thrust_x_adds[i], this.y + this.thrust_y_adds[i]);
 		    }
 		    ctx.stroke();
@@ -256,7 +256,7 @@ player.prototype.draw = function () {
     
     this.displayScore();
     this.displayLives();
-}
+};
 
 player.prototype.displayVeloc = function () {
     ctx.strokeStyle = "#FF0000";
@@ -264,7 +264,7 @@ player.prototype.displayVeloc = function () {
     ctx.moveTo(this.x,this.y);
     ctx.lineTo(this.x + 8*this.dx,this.y + 8*this.dy);
     ctx.stroke();
-}
+};
 
 player.prototype.displayTheta = function (th,color) {
     ctx.strokeStyle = color;
@@ -272,7 +272,7 @@ player.prototype.displayTheta = function (th,color) {
     ctx.moveTo(this.x,this.y);
     ctx.lineTo(this.x + (32 + this.x_shape[0])*cos(th),this.y + (32 + this.x_shape[0])*sin(th));
     ctx.stroke();
-}
+};
 
 player.prototype.shoot = function() {
     var vx;
@@ -289,24 +289,24 @@ player.prototype.shoot = function() {
     else {
 	bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,bullets.length));
     }
-}
+};
 
 //This could be more complicated...
 player.prototype.addScore = function(points) {
     this.score += points;
-}
+};
 
 player.prototype.displayScore = function() {
     ctx.font = "20px LucidaConsole";
     ctx.fillStyle = "#ffffff";
     ctx.fillText(this.score.toString(),canvas.width/2,30);
-}
+};
 
 player.prototype.displayLives = function() {
     ctx.font = "20px LucidaConsole";
     ctx.fillStyle = "#ffffff";
     ctx.fillText("Extra lives: "+this.extra_lives.toString(),canvas.width/5,30);
-}
+};
 
 player.prototype.die = function () {
     this.death_timer++;
@@ -314,7 +314,7 @@ player.prototype.die = function () {
 	this.death_rotation_speeds[i] = getUnif(-0.02,0.02);
 	this.death_thetas[i] = 0;
     }
-}
+};
 
 player.prototype.respawn = function() {
     this.extra_lives--;
@@ -360,7 +360,7 @@ bullet.prototype.updatePosition = function() {
 	deleteBullet(this.id);
     }
 
-}
+};
 
 bullet.prototype.draw = function () {
     ctx.fillStyle = "#ffffff";
@@ -368,7 +368,7 @@ bullet.prototype.draw = function () {
     ctx.beginPath();
     ctx.arc(this.x,this.y,this.r,0,2*pi);
     ctx.fill();
-}
+};
 
 //Asteroid object definition:
 function asteroid(x, y, r, dx, dy, id) {
@@ -378,16 +378,8 @@ function asteroid(x, y, r, dx, dy, id) {
     this.max_veloc = 40;
     this.x_veloc = dx;
     this.y_veloc = dy;
-    this.id = id
+    this.id = id;
     this.friction = 1;
-    this.max_r;
-    this.max_x;
-    this.max_y;
-    //this.max_x = 0;
-    //this.max_y = 0;
-    //this.min_x = 0;
-    //this.min_y = 0;
-    //this.quadrants = [false, false, false, false]; //top right, bottom right, bottom left, top left quadrants
     
     //Randomly generate verticies for craggy-looking asteroid shapes
     //Start with randomly generated r and theta pairs
@@ -399,15 +391,13 @@ function asteroid(x, y, r, dx, dy, id) {
     }
     this.thetas.sort();
     this.r_offsets = new Array(this.num_verts);
-    for(var i = 0; i<this.num_verts; i++){
+    for(i = 0; i<this.num_verts; i++){
 	this.r_offsets[i] = getUnif(-this.r/5,this.r/5);
     }
-    //this.thetas[this.num_verts] = this.thetas[0];
-    //this.thetas[this.num_verts] = this.thetas[0];
     //Convert them into cartesian offsets
     this.x_adds = [];
     this.y_adds = [];
-    for(var i = 0; i<this.num_verts; i++){
+    for(i = 0; i<this.num_verts; i++){
 	this.x_adds[i] = (this.r + this.r_offsets[i]) * cos(this.thetas[i]);
 	this.y_adds[i] = (this.r + this.r_offsets[i]) * sin(this.thetas[i]);
     }
@@ -505,7 +495,7 @@ particle.prototype.updatePosition = function () {
 	deleteParticle(this.id);
 	null_pars.push(this.id);
     }
-}
+};
 
 particle.prototype.draw = function() {
     ctx.fillStyle = "rgba(255,255,255,"+this.alpha+")";
@@ -513,11 +503,11 @@ particle.prototype.draw = function() {
     ctx.beginPath();
     ctx.arc(this.x,this.y,this.r,0,2*pi);
     ctx.fill();
-}
+};
 
 var deleteParticle = function(id) {
     particles[id] = null;
-}
+};
 
 var deleteAsteroid = function(id,shot) {
     if (shot) {
@@ -537,7 +527,7 @@ var deleteAsteroid = function(id,shot) {
     }
     asteroids[id] = null;
     null_asts.push(id);
-}
+};
 
 var deleteBullet = function(id) {
     if(bullets[id].crossings < 2) {
@@ -547,17 +537,17 @@ var deleteBullet = function(id) {
     }
     bullets[id] = null;
     null_buls.push(id);
-}
+};
 
 var spawnParticle = function(x,y) {
     if(null_pars.length > 0) {
 	var curr_id = null_pars.pop();
-	particles[curr_id] = new particle(x,y,curr_id)
+	particles[curr_id] = new particle(x,y,curr_id);
     }
     else {
 	particles.push(new particle(x,y,particles.length));
     }
-}
+};
 
 var spawnAsteroid = function(x,y,r,dx,dy,min_dist) {
     if (min_dist > 0) {
@@ -575,7 +565,7 @@ var spawnAsteroid = function(x,y,r,dx,dy,min_dist) {
     else {
         asteroids.push(new asteroid(x, y, r, dx, dy, asteroids.length-1));
     }    
-}
+};
 
 
 var moveAwayFromPoint = function(point,orig,dist,dim) {
@@ -588,7 +578,7 @@ var moveAwayFromPoint = function(point,orig,dist,dim) {
 	return 0;
     }
     return temp;
-}
+};
 
 
 //Creates the controler events
@@ -605,12 +595,12 @@ var setup = function () {
     document.addEventListener('touchend', function () {
 	touched = false;
     });
-}
+};
 
 
 var circConstrain = function (theta) {
     return theta-2*pi*floor(theta/(2*pi));
-}
+};
 
 
 var up;
@@ -671,7 +661,7 @@ var updateGameState = function () {
 	}
     	
     	//Loop over all (non-null) bullets, perform collision detection on all asteroids, render them and then update their positions
-    	for(var i = 0; i < bullets.length; i++){
+    	for(i = 0; i < bullets.length; i++){
     	    
     	    if(bullets[i] == null) { continue; } //Skip any null bullets
     	    
@@ -698,7 +688,7 @@ var updateGameState = function () {
     	}
     	
     	//Loop over all particles, update their positions and render them
-    	for (var i = 0; i < particles.length; i++) {
+    	for (i = 0; i < particles.length; i++) {
     	    if(particles[i] == null) {
     		continue;
     	    }
@@ -712,7 +702,7 @@ var updateGameState = function () {
 	ctx.fillStyle = "#ffffff";
 	ctx.fillText("Game over! Thanks for playing :)",canvas.width/4,canvas.height/2);
     }
-}
+};
 
 var startNewLevel = function(wait,time_passed) {
     //Wait a while to spawn in the asteroids and let player know what level they're on
@@ -736,7 +726,7 @@ var startNewLevel = function(wait,time_passed) {
 	}
 	level++;
     }
-}
+};
 
 var getControlInputs = function () {
 
@@ -765,7 +755,7 @@ var getControlInputs = function () {
 	p.dx = 0;
 	p.dy = 0;
     }
-}
+};
 
 var preciseCollideBulAst = function (bul,ast,dist) {
     var ang;
@@ -797,13 +787,13 @@ var preciseCollideBulAst = function (bul,ast,dist) {
     var m = (y2-y1)/(x2-x1);
     var edge_r = (y1 - m * x1)/(sin(ang) - (m * cos(ang)));
     return dist > edge_r ? false : true;
-}
+};
 
 var ticktock = function (frame) {
     if (frame % 60 == 0) {
 	console.log('Tick');
     }
-}
+};
 
 //Main loop
 var gameLoop = function () {
@@ -811,7 +801,7 @@ var gameLoop = function () {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     updateGameState();
     window.requestAnimFrame(gameLoop);
-}
+};
 
 
 window.requestAnimFrame = (
