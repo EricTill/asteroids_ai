@@ -299,13 +299,15 @@ player.prototype.addScore = function(points) {
 player.prototype.displayScore = function() {
     ctx.font = "20px LucidaConsole";
     ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
     ctx.fillText(this.score.toString(),canvas.width/2,30);
 };
 
 player.prototype.displayLives = function() {
     ctx.font = "20px LucidaConsole";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText("Extra lives: "+this.extra_lives.toString(),canvas.width/5,30);
+    ctx.textAlign = "center";
+    ctx.fillText("Extra lives: "+this.extra_lives.toString(),canvas.width/4,30);
 };
 
 player.prototype.die = function () {
@@ -700,6 +702,7 @@ var updateGameState = function () {
 	//death screen
 	ctx.font = "50px LucidaConsole";
 	ctx.fillStyle = "#ffffff";
+	ctx.textAlign = "center";
 	ctx.fillText("Game over! Thanks for playing :)",canvas.width/4,canvas.height/2);
     }
 };
@@ -710,6 +713,7 @@ var startNewLevel = function(wait,time_passed) {
 	//Display what level you're on
 	ctx.font = "20px LucidaConsole";
 	ctx.fillStyle = "#ffffff";
+	ctx.textAlign = "center";
 	ctx.fillText("Level "+level.toString(),canvas.width/2,canvas.height/4);
     }
     else {
@@ -797,7 +801,7 @@ var ticktock = function (frame) {
 
 //Main loop
 var gameLoop = function () {
-    getSetStageSize(1, 1);
+    //getSetStageSize(1, 1);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     updateGameState();
     window.requestAnimFrame(gameLoop);
