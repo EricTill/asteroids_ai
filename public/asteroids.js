@@ -703,7 +703,7 @@ var updateGameState = function () {
 	ctx.font = "50px LucidaConsole";
 	ctx.fillStyle = "#ffffff";
 	ctx.textAlign = "center";
-	ctx.fillText("Game over! Thanks for playing :)",canvas.width/4,canvas.height/2);
+	ctx.fillText("Game over! Thanks for playing :)",canvas.width/2,canvas.height/2);
     }
 };
 
