@@ -25,7 +25,6 @@ var floor = Math.floor;
 var atan2 = Math.atan2;
 var exp = Math.exp;
 
-
 //Commonly used functions:
 
 //Return a real min to max (inclusive)
@@ -68,7 +67,7 @@ function player(x,y) {
     this.visibility_cutoff = 0;
     this.visible = true;
     this.invulnerability = 0;
-    this.extra_lives = 3;
+    this.extra_lives = 20;
     this.x = x;
     this.y = y;
     this.x_adds = [];
@@ -93,6 +92,8 @@ function player(x,y) {
     this.vert_rs = [];
     this.death_rotation_speeds = [];
     this.death_thetas = [];
+    this.x_death_drifts = [];
+    this.y_death_drifts = [];
     this.x_adds_midpoints = [];
     this.y_adds_midpoints = [];
     this.shape_thetas = [];
@@ -107,6 +108,8 @@ function player(x,y) {
 	this.y_adds_midpoints.push(0);
 	this.death_rotation_speeds.push(0);
 	this.death_thetas.push(0);
+	this.x_death_drifts.push(0);
+	this.y_death_drifts.push(0);
     }
 }
 
@@ -181,7 +184,7 @@ player.prototype.draw = function () {
 
 	//player is in the middle of a death animation
 	if(this.death_timer > 0) {
-	    var x1,x2,y1,y2,prior_dist,post_dist;
+	    var x1,x2,y1,y2,tmp_x1,tmp_x2,tmp_y1,tmp_y2;
 	    ctx.strokeStyle="rgba(255,255,255,"+((this.respawn_time-this.death_timer+1)/this.respawn_time)+")";
 	    for(var i = 0; i<this.x_adds_midpoints.length; i++) {
 
@@ -197,28 +200,28 @@ player.prototype.draw = function () {
 		this.death_thetas[i] = circConstrain(this.death_thetas[i] + this.death_rotation_speeds[i]);
 		
 		//Shift relative to midpoint for rotation
-		x1 = (this.x_adds[i] - this.x_adds_midpoints[i]);
-		x2 = (this.x_adds[i+1] - this.x_adds_midpoints[i]);
-		y1 = (this.y_adds[i] - this.y_adds_midpoints[i]);
-		y2 = (this.y_adds[i+1] - this.y_adds_midpoints[i]);
-		prior_dist = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+		tmp_x1 = (this.x_adds[i] - this.x_adds_midpoints[i]);
+		tmp_x2 = (this.x_adds[i+1] - this.x_adds_midpoints[i]);
+		tmp_y1 = (this.y_adds[i] - this.y_adds_midpoints[i]);
+		tmp_y2 = (this.y_adds[i+1] - this.y_adds_midpoints[i]);
 
 		//apply rotation matrix
-		x1 = x1 * cos(this.death_thetas[i]) - y1 * sin(this.death_thetas[i]);
-		x2 = x2 * cos(this.death_thetas[i]) - y2 * sin(this.death_thetas[i]);
-		y1 = x1 * sin(this.death_thetas[i]) + y1 * cos(this.death_thetas[i]);
-		y2 = x2 * sin(this.death_thetas[i]) + y2 * cos(this.death_thetas[i]);
+		x1 = tmp_x1 * cos(this.death_thetas[i]) - tmp_y1 * sin(this.death_thetas[i]);
+		x2 = tmp_x2 * cos(this.death_thetas[i]) - tmp_y2 * sin(this.death_thetas[i]);
+		y1 = tmp_x1 * sin(this.death_thetas[i]) + tmp_y1 * cos(this.death_thetas[i]);
+		y2 = tmp_x2 * sin(this.death_thetas[i]) + tmp_y2 * cos(this.death_thetas[i]);
 
 		//Shift back relative to midpoints
-		x1 = (x1 + this.x_adds_midpoints[i]);
-		x2 = (x2 + this.x_adds_midpoints[i]);
-		y1 = (y1 + this.y_adds_midpoints[i]);
-		y2 = (y2 + this.y_adds_midpoints[i]);
-		post_dist = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
-		//x1 *= prior_dist/post_dist;
-		//x2 *= prior_dist/post_dist;
-		//y1 *= prior_dist/post_dist;
-		//y2 *= prior_dist/post_dist;
+		x1 = (x1 + this.x_adds_midpoints[i] + this.x_death_drifts[i]);
+		x2 = (x2 + this.x_adds_midpoints[i] + this.x_death_drifts[i]);
+		y1 = (y1 + this.y_adds_midpoints[i] + this.y_death_drifts[i]);
+		y2 = (y2 + this.y_adds_midpoints[i] + this.y_death_drifts[i]);
+
+		//Update death drifts
+		//this.x_death_drifts[i] += this.x_death_drifts[i];
+		//this.y_death_drifts[i] += this.y_death_drifts[i];
+
+		console.log(this.x_death_drifts,this.y_death_drifts);
 
 		//Draw line
 		ctx.beginPath();
@@ -313,8 +316,10 @@ player.prototype.displayLives = function() {
 player.prototype.die = function () {
     this.death_timer++;
     for(var i = 0; i<this.x_adds_midpoints.length; i++) {
-	this.death_rotation_speeds[i] = getUnif(-0.02,0.02);
+	this.death_rotation_speeds[i] = getUnif(-0.04,0.04);
 	this.death_thetas[i] = 0;
+	this.x_death_drifts[i] = getUnif(-5,5);
+	this.y_death_drifts[i] = getUnif(-5,5);
     }
 };
 
