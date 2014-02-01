@@ -7,6 +7,22 @@ var bullets = [];
 var particles = [];
 var touched = false;
 var delta_t = 0.05;
+var thrust  = new Audio();
+var splode1 = new Audio();
+var splode2 = new Audio();
+var splode3 = new Audio();
+var fire    = new Audio();
+//thrust.src = 'sound_effects/thrust_fade.wav';
+splode1.src = 'sound_effects/explode1.wav';
+splode2.src = 'sound_effects/explode2.wav';
+splode3.src = 'sound_effects/explode3.wav';
+fire.src = 'sound_effects/fire.wav';
+//thrust.load();
+splode1.load();
+splode2.load();
+splode3.load();
+fire.load();
+
 
 //Alias some mathematics functions/constants
 var pi = Math.PI;
@@ -124,6 +140,7 @@ player.prototype.move = function(accel,dtheta) {
 
     this.dx = this.dx + accel * cos(this.theta);
     this.dy = this.dy + accel * sin(this.theta); 
+    
 };
 
 player.prototype.updatePosition = function() {
@@ -184,8 +201,9 @@ player.prototype.draw = function () {
 
 	//player is in the middle of a death animation
 	if(this.death_timer > 0) {
-	    var x1,x2,y1,y2,tmp_x1,tmp_x2,tmp_y1,tmp_y2;
-	    ctx.strokeStyle="rgba(255,255,255,"+((this.respawn_time-this.death_timer+1)/this.respawn_time)+")";
+	    var x1,x2,y1,y2,tmp_x1,tmp_x2,tmp_y1,tmp_y2,prc;
+	    prc = ((this.respawn_time-this.death_timer+1)/this.respawn_time);
+	    ctx.strokeStyle="rgba(255,255,255,"+prc+")";
 	    for(var i = 0; i<this.x_adds_midpoints.length; i++) {
 
 		//Draw centers...
@@ -212,16 +230,10 @@ player.prototype.draw = function () {
 		y2 = tmp_x2 * sin(this.death_thetas[i]) + tmp_y2 * cos(this.death_thetas[i]);
 
 		//Shift back relative to midpoints
-		x1 = (x1 + this.x_adds_midpoints[i] + this.x_death_drifts[i]);
-		x2 = (x2 + this.x_adds_midpoints[i] + this.x_death_drifts[i]);
-		y1 = (y1 + this.y_adds_midpoints[i] + this.y_death_drifts[i]);
-		y2 = (y2 + this.y_adds_midpoints[i] + this.y_death_drifts[i]);
-
-		//Update death drifts
-		//this.x_death_drifts[i] += this.x_death_drifts[i];
-		//this.y_death_drifts[i] += this.y_death_drifts[i];
-
-		console.log(this.x_death_drifts,this.y_death_drifts);
+		x1 = (x1 + this.x_adds_midpoints[i] + (1 - prc) * this.x_death_drifts[i]);
+		x2 = (x2 + this.x_adds_midpoints[i] + (1 - prc) * this.x_death_drifts[i]);
+		y1 = (y1 + this.y_adds_midpoints[i] + (1 - prc) * this.y_death_drifts[i]);
+		y2 = (y2 + this.y_adds_midpoints[i] + (1 - prc) * this.y_death_drifts[i]);
 
 		//Draw line
 		ctx.beginPath();
@@ -256,6 +268,7 @@ player.prototype.draw = function () {
 	}
 	ctx.lineWidth = 1;
     }
+
     
     this.displayScore();
     this.displayLives();
@@ -292,6 +305,9 @@ player.prototype.shoot = function() {
     else {
 	bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,bullets.length));
     }
+
+    new Audio('sound_effects/fire.wav').play();
+
 };
 
 //This could be more complicated...
@@ -316,11 +332,13 @@ player.prototype.displayLives = function() {
 player.prototype.die = function () {
     this.death_timer++;
     for(var i = 0; i<this.x_adds_midpoints.length; i++) {
-	this.death_rotation_speeds[i] = getUnif(-0.04,0.04);
+	this.death_rotation_speeds[i] = getUnif(-0.03,0.03);
 	this.death_thetas[i] = 0;
-	this.x_death_drifts[i] = getUnif(-5,5);
-	this.y_death_drifts[i] = getUnif(-5,5);
+	this.x_death_drifts[i] = getUnif(-45,45);
+	this.y_death_drifts[i] = getUnif(-45,45);
     }
+    
+    new Audio('sound_effects/explode1.wav').play();
 };
 
 player.prototype.respawn = function() {
@@ -329,6 +347,7 @@ player.prototype.respawn = function() {
     this.y = canvas.height/2;
     this.dx = 0;
     this.dy = 0;
+    this.theta = -pi/2;
     this.invulnerability += 2*60;    
 };
 
@@ -532,6 +551,7 @@ var deleteAsteroid = function(id,shot) {
 	    }
 	}
     }
+    new Audio('sound_effects/explode'+getRandInt(2,3)+'.wav').play();
     asteroids[id] = null;
     null_asts.push(id);
 };
@@ -590,6 +610,8 @@ var moveAwayFromPoint = function(point,orig,dist,dim) {
 
 //Creates the controler events
 var setup = function () {
+
+    //Setup events for control inputs
     document.addEventListener('keydown', function (e) {
         pressed[e.keyCode] = true;
     });
@@ -602,6 +624,7 @@ var setup = function () {
     document.addEventListener('touchend', function () {
 	touched = false;
     });
+
 };
 
 
@@ -755,6 +778,12 @@ var getControlInputs = function () {
     
     //For thrust "animation" on player
     
+    //if(up) {    
+    //	//new Audio('sound_effects/thrust_fade.wav').play();
+    //	//thrust.play();
+    //	//rcs.play();
+    //}
+
     p.thrusting = up;
     p.move(0.1 * (up - down), dtheta * (right - left));
     //p.displayVeloc();
