@@ -7,6 +7,8 @@ var bullets = [];
 var particles = [];
 var touched = false;
 var delta_t = 0.05;
+var muted = false;
+var mute_lock = false;
 var thrust  = new Audio();
 var splode1 = new Audio();
 var splode2 = new Audio();
@@ -306,7 +308,9 @@ player.prototype.shoot = function() {
 	bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,bullets.length));
     }
 
-    new Audio('sound_effects/fire.wav').play();
+    if (!muted) {
+	new Audio('sound_effects/fire.wav').play();
+    }
 
 };
 
@@ -337,8 +341,11 @@ player.prototype.die = function () {
 	this.x_death_drifts[i] = getUnif(-45,45);
 	this.y_death_drifts[i] = getUnif(-45,45);
     }
-    
-    new Audio('sound_effects/explode1.wav').play();
+
+    if (!muted) {
+	new Audio('sound_effects/explode1.wav').play();
+    }
+
 };
 
 player.prototype.respawn = function() {
@@ -551,7 +558,11 @@ var deleteAsteroid = function(id,shot) {
 	    }
 	}
     }
-    new Audio('sound_effects/explode'+getRandInt(2,3)+'.wav').play();
+    
+    if (!muted) {
+	new Audio('sound_effects/explode'+getRandInt(2,3)+'.wav').play();
+    }
+
     asteroids[id] = null;
     null_asts.push(id);
 };
@@ -655,6 +666,17 @@ var updateGameState = function () {
 
     if (p.extra_lives >= 0) {
 
+	//Mute controls
+	if (pressed['M'.charCodeAt(0)] == false) {
+	    mute_lock = false;
+	}
+	if (!mute_lock && pressed['M'.charCodeAt(0)] == true) {
+	    console.log('m pressed',muted);
+	    mute_lock = true;
+	    muted = muted ? false : true; //toggle 'muted' variable
+	    console.log(muted);
+	}
+
     	//ticktock(frame++);
 	if(p.death_timer <= 0) {
     	    getControlInputs();
@@ -743,6 +765,9 @@ var startNewLevel = function(wait,time_passed) {
 	ctx.fillStyle = "#ffffff";
 	ctx.textAlign = "center";
 	ctx.fillText("Level "+level.toString(),canvas.width/2,canvas.height/4);
+	if (level === 1) {
+	    ctx.fillText("Press 'M' key to mute/unmute audio",canvas.width/2,3*canvas.height/4);
+	}
     }
     else {
 	//Reinitialize some variables
@@ -762,6 +787,7 @@ var startNewLevel = function(wait,time_passed) {
 
 var getControlInputs = function () {
 
+    //Shooting
     if (pressed[' '.charCodeAt(0)] == false) {
 	shoot_lock = false;
     }
