@@ -7,7 +7,7 @@ var bullets = [];
 var particles = [];
 var touched = false;
 var delta_t = 0.05;
-var muted = true;
+var muted = false;
 var mute_lock = false;
 //var thrust  = new Audio();
 var splode1 = new Audio();
@@ -85,7 +85,7 @@ function player(x,y) {
     this.visibility_cutoff = 0;
     this.visible = true;
     this.invulnerability = 0;
-    this.extra_lives = 20;
+    this.extra_lives = 3;
     this.x = x;
     this.y = y;
     this.x_adds = [];
@@ -697,7 +697,7 @@ var updateGameState = function () {
     		//perform hit detection on player
     		dist = sqrt((p.x-asteroids[i].x)*(p.x-asteroids[i].x) + (p.y-asteroids[i].y) * (p.y-asteroids[i].y));
 		if(dist <= (asteroids[i].max_r + p.max_r)) {
-    		    if(dist <= (asteroids[i].min_r + p.min_r) || preciseCollideAstPlayer(p,asteroids[i])) {
+    		    if(preciseCollideAstPlayer(p,asteroids[i]) || dist <= (asteroids[i].min_r + p.min_r)) {
 			//TODO: Add particle blast where contact occurred
 			if(p.invulnerability <= 0) {
     			    p.die(); //only die if player isn't invulnerable
@@ -821,7 +821,7 @@ var getControlInputs = function () {
 };
 
 var preciseCollideAstPlayer = function(ship,ast) {
-    var xa1,xa2,xp1,xp2,ya1,ya2,yp1,yp2;
+    var xa1,xa2,xp1,xp2,ya1,ya2,yp1,yp2,info;
     for(var i = 0; i < ship.x_adds.length - 1; i++) {
 	xp1 = ship.x_adds[i] + ship.x;
 	xp2 = ship.x_adds[i+1] + ship.x;
@@ -832,7 +832,11 @@ var preciseCollideAstPlayer = function(ship,ast) {
 	    xa2 = ast.x_adds[k+1] + ast.x;
 	    ya1 = ast.y_adds[k] + ast.y;
 	    ya2 = ast.y_adds[k+1] + ast.y;
-	    if (getIntersectionLines(xa1,ya1,xa2,ya2,xp1,yp1,xp2,yp2)) {
+	    info = getIntersectionLines(xa1,ya1,xa2,ya2,xp1,yp1,xp2,yp2);
+	    if (info.online) {
+		for(var n = 0; n <= getRandInt(10,20); n++){
+		    spawnParticle(info.x,info.y);
+		}
 		return true;
 	    }
 	}
@@ -850,7 +854,7 @@ var getIntersectionLines = function (xa1,ya1,xa2,ya2,xp1,yp1,xp2,yp2) {
     var ma = (ya2-ya1)/(xa2-xa1);
     var mp = (yp2-yp1)/(xp2-xp1);
 
-    if (mp === ma) { return false;} //not entirely true... two line segments could define the same line :(
+    if (mp === ma) { return {online: false};} //not entirely true... two line segments could define the same line :(
 
     var xi = ((ya1-ma*xa1)-(yp1-mp*xp1))/(mp-ma);
     var yi = (-ma*(yp1-mp*xp1)+mp*(ya1-ma*xa1))/(mp-ma);
@@ -858,14 +862,8 @@ var getIntersectionLines = function (xa1,ya1,xa2,ya2,xp1,yp1,xp2,yp2) {
     var xi_in_between = (xi <= max(xa1,xa2) && xi <= max(xp1,xp2) && xi >= min(xa1,xa2) && xi >= min(xp1,xp2));
     var yi_in_between = (yi <= max(ya1,ya2) && yi <= max(yp1,yp2) && yi >= min(ya1,ya2) && yi >= min(yp1,yp2));
 
-    ctx.fillStyle = "#ff0000";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(xi,yi,1.5,0,2*pi);
-    ctx.fill();
-
-    if (xi_in_between && yi_in_between) { return true; }
-    else { return false; }
+    if (xi_in_between && yi_in_between) { return {online: true, x:xi, y:yi}; }
+    else { return {online: false, x:xi, y:yi}; }
 };
 
 var preciseCollideBulAst = function (bul,ast,dist) {
