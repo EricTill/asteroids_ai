@@ -7,9 +7,9 @@ var bullets = [];
 var particles = [];
 var touched = false;
 var delta_t = 0.05;
-var muted = false;
+var muted = true;
 var mute_lock = false;
-var thrust  = new Audio();
+//var thrust  = new Audio();
 var splode1 = new Audio();
 var splode2 = new Audio();
 var splode3 = new Audio();
@@ -258,7 +258,7 @@ player.prototype.draw = function () {
 	    //draw afterburners if player is thrusting
 	    if(this.thrusting) {
 		this.thrust_lock++;
-		if((this.thrust_lock %= this.thrust_flicker_frames) == 0) {
+		if((this.thrust_lock %= this.thrust_flicker_frames) === 0) {
 		    ctx.beginPath();
 		    ctx.moveTo(this.x + this.thrust_x_adds[0], this.y + this.thrust_y_adds[0]);
 		    for(i = 1; i<this.thrust_x_shape.length; i++) {
@@ -490,8 +490,8 @@ function particle(x,y,id) {
     this.age = 0;
     this.theta = circConstrain(getUnif(0,2*pi));
     this.alpha = 1;
-    this.lifespan = 0.2*60; //seconds_alive*60
-    this.speed = getUnif(3,7);
+    this.lifespan = 0.4*60; //seconds_alive*60
+    this.speed = getUnif(2,5);
     this.x = x;
     this.y = y;
     this.dx = this.speed*cos(this.theta);
@@ -504,7 +504,7 @@ function particle(x,y,id) {
 particle.prototype.updatePosition = function () {
     this.age++;
     this.alpha -= 1/this.lifespan; //linear decay - alpha = 0 after this.lifespan # of frames
-    this.alpha = max(this.alpha,0);
+    this.alpha = max(this.alpha,0.001);
     this.x += this.dx;
     this.y += this.dy;
 
@@ -520,13 +520,12 @@ particle.prototype.updatePosition = function () {
 	this.marked_for_deletion = true;
     };
 
-    if(this.age > this.lifespan || this.alpha == 0) {
+    if(this.age > this.lifespan || this.alpha === 0) {
 	this.marked_for_deletion = true;
     }
 
     if(this.marked_for_deletion) {
 	deleteParticle(this.id);
-	null_pars.push(this.id);
     }
 };
 
@@ -539,6 +538,7 @@ particle.prototype.draw = function() {
 };
 
 var deleteParticle = function(id) {
+    null_pars.push(id);
     particles[id] = null;
 };
 
@@ -660,21 +660,19 @@ var null_pars = [];
 var asts_remaining = 0;
 var level = 1;
 var transition_time = 0;
-var asts_per_level = 5;
+var asts_per_level = 7;
 
 var updateGameState = function () {
 
     if (p.extra_lives >= 0) {
 
 	//Mute controls
-	if (pressed['M'.charCodeAt(0)] == false) {
+	if (pressed['M'.charCodeAt(0)] === false) {
 	    mute_lock = false;
 	}
-	if (!mute_lock && pressed['M'.charCodeAt(0)] == true) {
-	    console.log('m pressed',muted);
+	if (!mute_lock && pressed['M'.charCodeAt(0)] === true) {
 	    mute_lock = true;
 	    muted = muted ? false : true; //toggle 'muted' variable
-	    console.log(muted);
 	}
 
     	//ticktock(frame++);
@@ -688,7 +686,7 @@ var updateGameState = function () {
     	//Loop over all (non-null) asteroids, render them, and update their positions
 	asts_remaining = 0;
     	for (var i = 0; i < asteroids.length; i++) {
-    	    if(asteroids[i] == null) {
+    	    if(asteroids[i] === null) {
     		continue;
     	    }
     	    asteroids[i].draw();
@@ -698,13 +696,15 @@ var updateGameState = function () {
 	    if(p.death_timer <= 0) {
     		//perform hit detection on player
     		dist = sqrt((p.x-asteroids[i].x)*(p.x-asteroids[i].x) + (p.y-asteroids[i].y) * (p.y-asteroids[i].y));
-    		if(dist - p.max_r < asteroids[i].max_r) {
-		    //TODO: Add particle blast where contact occurred
-		    if(p.invulnerability <= 0) {
-    			p.die(); //only die if player isn't invulnerable
-		    }
-    		    deleteAsteroid(i,false);
-    		}
+		if(dist <= (asteroids[i].max_r + p.max_r)) {
+    		    if(dist <= (asteroids[i].min_r + p.min_r) || preciseCollideAstPlayer(p,asteroids[i])) {
+			//TODO: Add particle blast where contact occurred
+			if(p.invulnerability <= 0) {
+    			    p.die(); //only die if player isn't invulnerable
+			}
+    			deleteAsteroid(i,false);
+    		    }
+		}
 	    }
 	}
 
@@ -715,12 +715,12 @@ var updateGameState = function () {
     	//Loop over all (non-null) bullets, perform collision detection on all asteroids, render them and then update their positions
     	for(i = 0; i < bullets.length; i++){
     	    
-    	    if(bullets[i] == null) { continue; } //Skip any null bullets
+    	    if(bullets[i] === null) { continue; } //Skip any null bullets
     	    
     	    //Perform collision detection on asteroids and bullets
     	    for(var j = 0; j < asteroids.length; j++){
     		
-    		if(asteroids[j] == null || bullets[i] == null) { continue; } //Skip any null bullets or asteroids
+    		if(asteroids[j] === null || bullets[i] === null) { continue; } //Skip any null bullets or asteroids
     		
     		dist = sqrt((bullets[i].x-asteroids[j].x)*(bullets[i].x-asteroids[j].x)+(bullets[i].y-asteroids[j].y)*(bullets[i].y-asteroids[j].y));
     		if(dist <= asteroids[j].max_r) {
@@ -732,7 +732,7 @@ var updateGameState = function () {
     		}
     	    }
     	    
-    	    if(bullets[i] == null) { continue; } //Skip any null bullets
+    	    if(bullets[i] === null) { continue; } //Skip any null bullets
     	    
     	    //Render and update all non-null bullets
     	    bullets[i].draw();
@@ -741,11 +741,10 @@ var updateGameState = function () {
     	
     	//Loop over all particles, update their positions and render them
     	for (i = 0; i < particles.length; i++) {
-    	    if(particles[i] == null) {
-    		continue;
-    	    }
-    	    particles[i].draw();
-    	    particles[i].updatePosition();
+    	    if(particles[i] !== null) {
+    		particles[i].draw();
+    		particles[i].updatePosition();
+	    }
     	}
     }
     else {
@@ -771,10 +770,10 @@ var startNewLevel = function(wait,time_passed) {
     }
     else {
 	//Reinitialize some variables
-	asteroids = [];
-	null_asts = [];
-	particles = [];
-	null_pars = [];
+	//asteroids = [];
+	//null_asts = [];
+	//particles = [];
+	//null_pars = [];
 	transition_time = 0;
 	//TODO: Make sure asteroids don't spawn on top of player
 	for(var i = 0; i < level * asts_per_level; i++) {
@@ -788,10 +787,10 @@ var startNewLevel = function(wait,time_passed) {
 var getControlInputs = function () {
 
     //Shooting
-    if (pressed[' '.charCodeAt(0)] == false) {
+    if (pressed[' '.charCodeAt(0)] === false) {
 	shoot_lock = false;
     }
-    if (!shoot_lock && pressed[' '.charCodeAt(0)] == true) {
+    if (!shoot_lock && pressed[' '.charCodeAt(0)] === true) {
 	shoot_lock = true;
 	p.shoot();
     }
@@ -815,10 +814,58 @@ var getControlInputs = function () {
     //p.displayVeloc();
     //p.displayTheta(p.theta);
 
-    if (pressed['S'.charCodeAt(0)] == true) {
+    if (pressed['S'.charCodeAt(0)] === true) {
 	p.dx = 0;
 	p.dy = 0;
     }
+};
+
+var preciseCollideAstPlayer = function(ship,ast) {
+    var xa1,xa2,xp1,xp2,ya1,ya2,yp1,yp2;
+    for(var i = 0; i < ship.x_adds.length - 1; i++) {
+	xp1 = ship.x_adds[i] + ship.x;
+	xp2 = ship.x_adds[i+1] + ship.x;
+	yp1 = ship.y_adds[i] + ship.y;
+	yp2 = ship.y_adds[i+1] + ship.y;
+	for(var k = 0; k < ast.x_adds.length - 1; k++) {
+	    xa1 = ast.x_adds[k] + ast.x;
+	    xa2 = ast.x_adds[k+1] + ast.x;
+	    ya1 = ast.y_adds[k] + ast.y;
+	    ya2 = ast.y_adds[k+1] + ast.y;
+	    if (getIntersectionLines(xa1,ya1,xa2,ya2,xp1,yp1,xp2,yp2)) {
+		return true;
+	    }
+	}
+    }
+    return false;
+};
+
+var getIntersectionLines = function (xa1,ya1,xa2,ya2,xp1,yp1,xp2,yp2) {
+    //This function takes in two points and returns:
+    //true if there is an intersection of the lines a and p 
+    //AND that intersection is on the line segment between these points.
+    //false otherwise
+
+    //get slopes of the two lines (note that the determinant is just mp-ma)
+    var ma = (ya2-ya1)/(xa2-xa1);
+    var mp = (yp2-yp1)/(xp2-xp1);
+
+    if (mp === ma) { return false;} //not entirely true... two line segments could define the same line :(
+
+    var xi = ((ya1-ma*xa1)-(yp1-mp*xp1))/(mp-ma);
+    var yi = (-ma*(yp1-mp*xp1)+mp*(ya1-ma*xa1))/(mp-ma);
+
+    var xi_in_between = (xi <= max(xa1,xa2) && xi <= max(xp1,xp2) && xi >= min(xa1,xa2) && xi >= min(xp1,xp2));
+    var yi_in_between = (yi <= max(ya1,ya2) && yi <= max(yp1,yp2) && yi >= min(ya1,ya2) && yi >= min(yp1,yp2));
+
+    ctx.fillStyle = "#ff0000";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(xi,yi,1.5,0,2*pi);
+    ctx.fill();
+
+    if (xi_in_between && yi_in_between) { return true; }
+    else { return false; }
 };
 
 var preciseCollideBulAst = function (bul,ast,dist) {
@@ -829,7 +876,7 @@ var preciseCollideBulAst = function (bul,ast,dist) {
     //Next, find which two verticies of the asteroid the bullet is between
     var indx = 0;
     while (indx<ast.thetas.length) {
-	if(ang == ast.thetas[indx]) {
+	if(ang === ast.thetas[indx]) {
 	    return dist > (ast.r_offsets[indx]+ast.r) ? false : true; //on the off chance that the bullet directly hits a vertex
 	}
 	else if (ang < ast.thetas[indx]) {
@@ -846,7 +893,7 @@ var preciseCollideBulAst = function (bul,ast,dist) {
     var x2 = ast.x_adds[indx % ast.num_verts];
     var y1 = ast.y_adds[(indx - 1) % ast.num_verts];
     var y2 = ast.y_adds[indx % ast.num_verts];
-    //TODO: x1==x2 exception
+    //TODO: x1===x2 exception
 
     var m = (y2-y1)/(x2-x1);
     var edge_r = (y1 - m * x1)/(sin(ang) - (m * cos(ang)));
@@ -854,7 +901,7 @@ var preciseCollideBulAst = function (bul,ast,dist) {
 };
 
 var ticktock = function (frame) {
-    if (frame % 60 == 0) {
+    if (frame % 60 === 0) {
 	console.log('Tick');
     }
 };
