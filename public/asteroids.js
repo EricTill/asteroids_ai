@@ -7,7 +7,7 @@ var bullets = [];
 var particles = [];
 var touched = false;
 var delta_t = 0.05;
-var muted = false;
+var muted = true;
 var mute_lock = false;
 //var thrust  = new Audio();
 var splode1 = new Audio();
@@ -41,9 +41,6 @@ var pow = Math.pow;
 var abs = Math.abs;
 var floor = Math.floor;
 var atan2 = Math.atan2;
-var exp = Math.exp;
-
-//Commonly used functions:
 
 //Return a real min to max (inclusive)
 var getUnif = function(a, b) {
@@ -56,15 +53,6 @@ var getRandInt = function(a,b) {
     return round(getUnif(a,b));
 };
 
-
-//Emulate a normal distribution - this uses the central limit theorem (the more iterations, the closer to a true normal it will be)
-var getNorm = function(mean, iterations) {
-    var output = 0;
-    for (var i = 0; i < iterations; i++) {
-        output += rand() * mean;
-    }
-    return output / iterations;
-};
 
 //Runs every frame to adjust to resizing windows
 var body_height;
@@ -79,7 +67,7 @@ var getSetStageSize = function (vert_percent, horz_percent) {
 
 
 function player(x,y) {
-    this.respawn_time = 4*60; //secs*60
+    this.respawn_time = 2.5*60; //secs*60
     this.death_timer = 0;
     this.visibility_cycle = 0.25*60; //measured in secs*60
     this.visibility_cutoff = 0;
@@ -98,7 +86,7 @@ function player(x,y) {
     this.dx = 0;
     this.dy = 0;
     this.theta = -pi/2;
-    this.max_veloc = 8;
+    this.max_speed = 120;
     this.score = 0;
     this.thrusting = false;
     this.thrust_x_shape = [-14, -16, -14, -17, -14, -16, -14];
@@ -133,16 +121,26 @@ function player(x,y) {
 
 player.prototype.move = function(accel,dtheta) {
 
-    var tar_dx,tar_dy,speed,non_zero_v,theta_func,veloc_theta;
-    var angular_v;
+    var speed;
+    var temp_dx;
+    var temp_dy;
 
-    //Update angle
     this.theta += dtheta;
     this.theta = circConstrain(this.theta);
 
-    this.dx = this.dx + accel * cos(this.theta);
-    this.dy = this.dy + accel * sin(this.theta); 
-    
+    temp_dx = this.dx + accel * cos(this.theta);
+    temp_dy = this.dy + accel * sin(this.theta);
+    speed = temp_dx * temp_dx + temp_dy * temp_dy;
+
+    if(speed <= this.max_speed) {
+	this.dx = temp_dx;
+	this.dy = temp_dy;
+    }
+    else { 
+	this.dx = this.max_speed * temp_dx/speed;
+	this.dy = this.max_speed * temp_dy/speed;	
+    }
+
 };
 
 player.prototype.updatePosition = function() {
@@ -207,14 +205,6 @@ player.prototype.draw = function () {
 	    prc = ((this.respawn_time-this.death_timer+1)/this.respawn_time);
 	    ctx.strokeStyle="rgba(255,255,255,"+prc+")";
 	    for(var i = 0; i<this.x_adds_midpoints.length; i++) {
-
-		//Draw centers...
-		//ctx.fillStyle = "#ff0000";
-		//ctx.lineWidth = 1;
-		//ctx.beginPath();
-		//ctx.arc(this.x+this.x_adds_midpoints[i],this.y+this.y_adds_midpoints[i],2,0,2*pi);
-		//ctx.fill();
-		//ctx.strokeStyle="rgba(255,255,255,"+((this.respawn_time-this.death_timer+1)/this.respawn_time)+")";
 
 		//Update death angles
 		this.death_thetas[i] = circConstrain(this.death_thetas[i] + this.death_rotation_speeds[i]);
@@ -427,6 +417,7 @@ function asteroid(x, y, r, dx, dy, id) {
     for(i = 0; i<this.num_verts; i++){
 	this.r_offsets[i] = getUnif(-this.r/5,this.r/5);
     }
+
     //Convert them into cartesian offsets
     this.x_adds = [];
     this.y_adds = [];
@@ -814,10 +805,6 @@ var getControlInputs = function () {
     //p.displayVeloc();
     //p.displayTheta(p.theta);
 
-    if (pressed['S'.charCodeAt(0)] === true) {
-	p.dx = 0;
-	p.dy = 0;
-    }
 };
 
 var preciseCollideAstPlayer = function(ship,ast) {
