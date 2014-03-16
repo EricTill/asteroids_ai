@@ -41,6 +41,8 @@ var pow = Math.pow;
 var abs = Math.abs;
 var floor = Math.floor;
 var atan2 = Math.atan2;
+var nlog = Math.log;
+var exp = Math.exp;
 
 //Return a real min to max (inclusive)
 var getUnif = function(a, b) {
@@ -80,6 +82,12 @@ function player(x,y) {
     this.y_adds = [];
     this.x_shape = [14, -14, -7, -14, 14];
     this.y_shape = [0, -7, 0, 7, 0];
+    this.last_theta_dir = 0;
+    this.min_dtheta =  (2*pi/(60*3.0)); // measured time it takes to do a full rotation
+    this.max_dtheta =  (2*pi/(60*1.25)); // measured time it takes to do a full rotation
+    this.frames_to_max_dtheta = 0.1*60; //measured in seconds*60
+    this.theta_b = nlog(this.max_dtheta/this.min_dtheta)/this.frames_to_max_dtheta;
+    this.num_consecutive_turn = 0;
     this.num_verts = 4;
     this.alpha = 1;
     this.color = [1, 1, 1];
@@ -119,13 +127,24 @@ function player(x,y) {
     }
 }
 
-player.prototype.move = function(accel,dtheta) {
+player.prototype.move = function(accel,theta_dir) {
 
     var speed;
     var temp_dx;
     var temp_dy;
 
-    this.theta += dtheta;
+    //Calc dtheta - should rise exponentially to a max value based on number of consecutive identical turn inputs
+    if (theta_dir != 0 && theta_dir == this.last_theta_dir) {
+	this.num_consecutive_turns++;
+	var dtheta = min(this.max_dtheta, this.min_dtheta * exp(this.theta_b * this.num_consecutive_turns));
+	console.log(dtheta,this.num_consecutive_turns,exp(this.theta_b * this.num_consecutive_turns));
+	this.theta += theta_dir * dtheta;
+    }
+    else {
+	this.num_consecutive_turns = 0;
+	this.theta += this.min_dtheta * theta_dir;
+    }
+    this.last_theta_dir = theta_dir;
     this.theta = circConstrain(this.theta);
 
     temp_dx = this.dx + accel * cos(this.theta);
@@ -544,8 +563,8 @@ var deleteAsteroid = function(id,shot) {
 	    for(var i = 0; i < n; i++) {
 		//                   x                                        y
 		spawnAsteroid(ast.x+getUnif(-ast.max_r/n,ast.max_r/n), ast.y+getUnif(-ast.max_r/n,ast.max_r/n),
-			      max(getUnif(ast.r/n,ast.r*(n-1)/n),15), ast.x_veloc+getUnif(-1,1), ast.y_veloc+getUnif(-1,1), 0);
-		//                     r                                         dx                    dy                  min_dist
+			      max(getUnif(ast.r/n,ast.r*(n-1)/n),15), ast.x_veloc+getUnif(-1.5,1.5), ast.y_veloc+getUnif(-1.5,1.5), 0);
+		//                     r                                         dx                         dy                    min_dist
 	    }
 	}
     }
@@ -700,7 +719,8 @@ var updateGameState = function () {
 	}
 
 	if(asts_remaining <= 0) {
-	    startNewLevel(1.5*60,transition_time++); //f(level,wait-time) wait-time measured in secs*60
+	    var wait_time = level == 1 ? 7 : 2;
+	    startNewLevel(wait_time*60,transition_time++); //f(level,wait-time) wait-time measured in secs*60
 	}
     	
     	//Loop over all (non-null) bullets, perform collision detection on all asteroids, render them and then update their positions
@@ -756,7 +776,9 @@ var startNewLevel = function(wait,time_passed) {
 	ctx.textAlign = "center";
 	ctx.fillText("Level "+level.toString(),canvas.width/2,canvas.height/4);
 	if (level === 1) {
-	    ctx.fillText("Press 'M' key to mute/unmute audio",canvas.width/2,3*canvas.height/4);
+	    ctx.fillText("WAD or arrow keys to move",canvas.width/2,3*canvas.height/4);
+	    ctx.fillText("Spacebar to shoot",canvas.width/2,3*canvas.height/4+30);
+	    ctx.fillText("Press 'M' key to mute/unmute audio",canvas.width/2,3*canvas.height/4+60);
 	}
     }
     else {
@@ -777,7 +799,6 @@ var startNewLevel = function(wait,time_passed) {
 
 var getControlInputs = function () {
 
-    //Shooting
     if (pressed[' '.charCodeAt(0)] === false) {
 	shoot_lock = false;
     }
@@ -788,12 +809,11 @@ var getControlInputs = function () {
     
     //use arrow keys to move player around
     up = pressed[38] || pressed['W'.charCodeAt(0)] ? 1 : 0;
-    down = pressed[40] || pressed['S'.charCodeAt(0)] ? 1 : 0;
+    //down = pressed[40] || pressed['S'.charCodeAt(0)] ? 1 : 0;
     left = pressed[37] || pressed['A'.charCodeAt(0)] ? 1 : 0;
     right = pressed[39] || pressed['D'.charCodeAt(0)] ? 1 : 0;
     
-    //For thrust "animation" on player
-    
+    //Couldn't ever get this to work right...
     //if(up) {    
     //	//new Audio('sound_effects/thrust_fade.wav').play();
     //	//thrust.play();
@@ -801,7 +821,8 @@ var getControlInputs = function () {
     //}
 
     p.thrusting = up;
-    p.move(0.1 * (up - down), dtheta * (right - left));
+    p.move(0.1 * up, right - left);
+    //p.move(0.1 * (up - down), dtheta * (right - left));
     //p.displayVeloc();
     //p.displayTheta(p.theta);
 
