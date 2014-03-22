@@ -85,7 +85,7 @@ function player(x,y) {
     this.last_theta_dir = 0;
     this.min_dtheta =  (2*pi/(60*3.0)); // measured time it takes to do a full rotation
     this.max_dtheta =  (2*pi/(60*1.25)); // measured time it takes to do a full rotation
-    this.frames_to_max_dtheta = 0.1*60; //measured in seconds*60
+    this.frames_to_max_dtheta = 0.05*60; //measured in seconds*60
     this.theta_b = nlog(this.max_dtheta/this.min_dtheta)/this.frames_to_max_dtheta;
     this.num_consecutive_turn = 0;
     this.num_verts = 4;
@@ -137,7 +137,6 @@ player.prototype.move = function(accel,theta_dir) {
     if (theta_dir != 0 && theta_dir == this.last_theta_dir) {
 	this.num_consecutive_turns++;
 	var dtheta = min(this.max_dtheta, this.min_dtheta * exp(this.theta_b * this.num_consecutive_turns));
-	console.log(dtheta,this.num_consecutive_turns,exp(this.theta_b * this.num_consecutive_turns));
 	this.theta += theta_dir * dtheta;
     }
     else {
@@ -329,14 +328,14 @@ player.prototype.addScore = function(points) {
 };
 
 player.prototype.displayScore = function() {
-    ctx.font = "20px LucidaConsole";
+    ctx.font = "20px Impact";
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "center";
     ctx.fillText(this.score.toString(),canvas.width/2,30);
 };
 
 player.prototype.displayLives = function() {
-    ctx.font = "20px LucidaConsole";
+    ctx.font = "20px Impact";
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "center";
     ctx.fillText("Extra lives: "+this.extra_lives.toString(),canvas.width/4,30);
@@ -404,12 +403,21 @@ bullet.prototype.updatePosition = function() {
 
 };
 
+bullet.prototype.displayTheta = function (th,color) {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(this.x,this.y);
+    ctx.lineTo(this.x + 32*cos(th),this.y + 32*sin(th));
+    ctx.stroke();
+};
+
 bullet.prototype.draw = function () {
     ctx.fillStyle = "#ffffff";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(this.x,this.y,this.r,0,2*pi);
     ctx.fill();
+    //this.displayTheta(atan2(this.dy,this.dx),"#ff3300");
 };
 
 //Asteroid object definition:
@@ -452,19 +460,74 @@ function asteroid(x, y, r, dx, dy, id) {
     this.min_r = Math.min.apply(Math,this.r_offsets) + this.r;
     this.max_r_indx = this.r_offsets.indexOf(Math.max.apply(Math,this.r_offsets));
     this.min_r_indx = this.r_offsets.indexOf(Math.min.apply(Math,this.r_offsets));
+    //death animation stuff
+    this.death_timer = 0;
+    this.death_anim_time = 1*60; //secs*60
+    this.x_adds_midpoints = [];
+    this.y_adds_midpoints = [];
+    this.death_rotation_speeds = [];
+    this.death_thetas = [];
+    this.x_death_drifts = [];
+    this.y_death_drifts = [];
+    for(i = 0; i<this.x_adds.length-1; i++) {
+	this.x_adds_midpoints.push(0);
+	this.y_adds_midpoints.push(0);
+	this.death_rotation_speeds.push(0);
+	this.death_thetas.push(0);
+	this.x_death_drifts.push(0);
+	this.y_death_drifts.push(0);
+    }
 }
 
 
 //Asteroid draw function
 asteroid.prototype.draw = function () {
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(this.x + this.x_adds[0], this.y + this.y_adds[0]);
-    for(var i=0; i<this.num_verts; i++){
-    	ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
+	//asteroid is in the middle of a death animation
+	if(this.death_timer > 0) {
+	    var x1,x2,y1,y2,tmp_x1,tmp_x2,tmp_y1,tmp_y2,prc;
+	    prc = ((this.death_anim_time-this.death_timer+1)/this.death_anim_time);
+	    ctx.strokeStyle="rgba(255,255,255,"+prc+")";
+	    for(var i = 0; i<this.x_adds_midpoints.length; i++) {
+
+		//Update death angles
+		this.death_thetas[i] = circConstrain(this.death_thetas[i] + this.death_rotation_speeds[i]);
+		
+		//Shift relative to midpoint for rotation
+		tmp_x1 = (this.x_adds[i] - this.x_adds_midpoints[i]);
+		tmp_x2 = (this.x_adds[i+1] - this.x_adds_midpoints[i]);
+		tmp_y1 = (this.y_adds[i] - this.y_adds_midpoints[i]);
+		tmp_y2 = (this.y_adds[i+1] - this.y_adds_midpoints[i]);
+
+		//apply rotation matrix
+		x1 = tmp_x1 * cos(this.death_thetas[i]) - tmp_y1 * sin(this.death_thetas[i]);
+		x2 = tmp_x2 * cos(this.death_thetas[i]) - tmp_y2 * sin(this.death_thetas[i]);
+		y1 = tmp_x1 * sin(this.death_thetas[i]) + tmp_y1 * cos(this.death_thetas[i]);
+		y2 = tmp_x2 * sin(this.death_thetas[i]) + tmp_y2 * cos(this.death_thetas[i]);
+
+		//Shift back relative to midpoints
+		x1 = (x1 + this.x_adds_midpoints[i] + (1 - prc) * this.x_death_drifts[i]);
+		x2 = (x2 + this.x_adds_midpoints[i] + (1 - prc) * this.x_death_drifts[i]);
+		y1 = (y1 + this.y_adds_midpoints[i] + (1 - prc) * this.y_death_drifts[i]);
+		y2 = (y2 + this.y_adds_midpoints[i] + (1 - prc) * this.y_death_drifts[i]);
+
+		//Draw line
+		ctx.beginPath();
+		ctx.moveTo(x1 + this.x, y1 + this.y);
+		ctx.lineTo(x2 + this.x, y2 + this.y);
+		ctx.stroke();
+	    }
+	}
+    
+    else {
+	ctx.strokeStyle = "#ffffff";
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.moveTo(this.x + this.x_adds[0], this.y + this.y_adds[0]);
+	for(var i=0; i<this.num_verts; i++){
+    	    ctx.lineTo(this.x + this.x_adds[i+1], this.y + this.y_adds[i+1]);
+	}
+	ctx.stroke();
     }
-    ctx.stroke();
 };
 
 //Updates the position of an asteroid
@@ -486,6 +549,14 @@ asteroid.prototype.updatePosition = function () {
     } else if (this.y < 0) {
         this.y = canvas.height;
     };
+
+    if(this.death_timer > 0) {
+	this.death_timer++;
+	if(this.death_timer >= this.death_anim_time) {
+	    console.log("sent deletion request",this.id);
+	    deleteAsteroid(this.id);
+	}
+    }
 };
 
 asteroid.prototype.displayTheta = function (th,color,len) {
@@ -494,6 +565,36 @@ asteroid.prototype.displayTheta = function (th,color,len) {
     ctx.moveTo(this.x,this.y);
     ctx.lineTo(this.x + len*cos(th),this.y + len*sin(th));
     ctx.stroke();
+};
+
+asteroid.prototype.die = function (shot) {
+    console.log("asteroid dead",this.id,this.shot);
+    if (shot) {
+	p.addScore(5 * (level + round(this.r) - 1));
+	//Create new asteroids where the last one blew up if it was big enough
+	if (this.r >= 20) {
+	    var n = getRandInt(2,3) + floor(this.r/40);
+	    for(var i = 0; i < n; i++) {
+		//                        x                                        y
+		spawnAsteroid(this.x+getUnif(-this.max_r/n,this.max_r/n), this.y+getUnif(-this.max_r/n,this.max_r/n),
+			      max(getUnif(this.r/n,this.r*(n-1)/n),15), this.x_veloc+getUnif(-1.5,1.5), this.y_veloc+getUnif(-1.5,1.5), 0);
+		//                        r                                         dx                         dy                    min_dist
+	    }
+	}
+    }
+    
+    if (!muted) {
+	new Audio('sound_effects/explode'+getRandInt(2,3)+'.wav').play();
+    }
+
+    //death animation stuff
+    this.death_timer++;
+    for(var i = 0; i<this.x_adds_midpoints.length; i++) {
+	this.death_rotation_speeds[i] = getUnif(-0.03,0.03);
+	this.death_thetas[i] = 0;
+	this.x_death_drifts[i] = getUnif(-45,45);
+	this.y_death_drifts[i] = getUnif(-45,45);
+    }
 };
 
 function particle(x,y,id) {
@@ -547,34 +648,17 @@ particle.prototype.draw = function() {
     ctx.fill();
 };
 
+
 var deleteParticle = function(id) {
     null_pars.push(id);
     particles[id] = null;
 };
 
-var deleteAsteroid = function(id,shot) {
-    if (shot) {
-	p.addScore(1 * (level - 1));
-	//Create new asteroids where the last one blew up if it was big enough
-	if (asteroids[id].r >= 20) {
-	    var ast = asteroids[id];
-	    //var n = floor(ast.r/10) + getRandInt(0,2);
-	    var n = getRandInt(2,3) + floor(ast.r/40);
-	    for(var i = 0; i < n; i++) {
-		//                   x                                        y
-		spawnAsteroid(ast.x+getUnif(-ast.max_r/n,ast.max_r/n), ast.y+getUnif(-ast.max_r/n,ast.max_r/n),
-			      max(getUnif(ast.r/n,ast.r*(n-1)/n),15), ast.x_veloc+getUnif(-1.5,1.5), ast.y_veloc+getUnif(-1.5,1.5), 0);
-		//                     r                                         dx                         dy                    min_dist
-	    }
-	}
-    }
-    
-    if (!muted) {
-	new Audio('sound_effects/explode'+getRandInt(2,3)+'.wav').play();
-    }
 
+var deleteAsteroid = function(id) {
+    console.log("deleted:",asteroids[id].id,asteroids[id]);
+    null_asts.push(this.id);
     asteroids[id] = null;
-    null_asts.push(id);
 };
 
 var deleteBullet = function(id) {
@@ -611,7 +695,7 @@ var spawnAsteroid = function(x,y,r,dx,dy,min_dist) {
 	asteroids[curr_id] = new asteroid(x, y, r, dx, dy, curr_id);
     }
     else {
-        asteroids.push(new asteroid(x, y, r, dx, dy, asteroids.length-1));
+        asteroids.push(new asteroid(x, y, r, dx, dy, asteroids.length));
     }    
 };
 
@@ -660,13 +744,13 @@ var left;
 var right;
 var shoot_lock = false;
 var frame = 0;
-var dtheta = (2*pi/(60*1.6)); //measured in sections needed to turn the ship 360 degrees
+//var dtheta = (2*pi/(60*1.6)); //measured in sections needed to turn the ship 360 degrees
 getSetStageSize(1, 1);
 var dist;
 var p = new player(canvas.width/2,canvas.height/2);
-var null_asts = [];
-var null_buls = [];
-var null_pars = [];
+var null_asts = [0];
+var null_buls = [0];
+var null_pars = [0];
 var asts_remaining = 0;
 var level = 1;
 var transition_time = 0;
@@ -701,19 +785,25 @@ var updateGameState = function () {
     	    }
     	    asteroids[i].draw();
     	    asteroids[i].updatePosition();
+    	    if(asteroids[i] === null) {
+    		continue;
+    	    }
 	    asts_remaining++;
+	    //debugger;
     	    
 	    if(p.death_timer <= 0) {
     		//perform hit detection on player
-    		dist = sqrt((p.x-asteroids[i].x)*(p.x-asteroids[i].x) + (p.y-asteroids[i].y) * (p.y-asteroids[i].y));
-		if(dist <= (asteroids[i].max_r + p.max_r)) {
-    		    if(preciseCollideAstPlayer(p,asteroids[i]) || dist <= (asteroids[i].min_r + p.min_r)) {
-			//TODO: Add particle blast where contact occurred
-			if(p.invulnerability <= 0) {
-    			    p.die(); //only die if player isn't invulnerable
-			}
-    			deleteAsteroid(i,false);
-    		    }
+		if(asteroids[i].death_timer == 0) {
+    		    dist = sqrt((p.x-asteroids[i].x)*(p.x-asteroids[i].x) + (p.y-asteroids[i].y) * (p.y-asteroids[i].y));
+		    if(dist <= (asteroids[i].max_r + p.max_r)) {
+    			if(preciseCollideAstPlayer(p,asteroids[i]) || dist <= (asteroids[i].min_r + p.min_r)) {
+			    //TODO: Add particle blast where contact occurred
+			    if(p.invulnerability <= 0) {
+    				p.die(); //only die if player isn't invulnerable
+			    }
+    			    asteroids[i].die(false);
+    			}
+		    }
 		}
 	    }
 	}
@@ -734,9 +824,10 @@ var updateGameState = function () {
     		if(asteroids[j] === null || bullets[i] === null) { continue; } //Skip any null bullets or asteroids
     		
     		dist = sqrt((bullets[i].x-asteroids[j].x)*(bullets[i].x-asteroids[j].x)+(bullets[i].y-asteroids[j].y)*(bullets[i].y-asteroids[j].y));
-    		if(dist <= asteroids[j].max_r) {
+    		if(asteroids[j].death_timer == 0 && dist <= asteroids[j].max_r) {
     		    if(dist <= asteroids[j].min_r || preciseCollideBulAst(bullets[i],asteroids[j],dist)) {
-    			deleteAsteroid(j,true);
+    			asteroids[j].die(true);
+			//deleteAsteroid(j,true);
     			deleteBullet(i);
     			continue;
     		    }
@@ -760,7 +851,7 @@ var updateGameState = function () {
     }
     else {
 	//death screen
-	ctx.font = "50px LucidaConsole";
+	ctx.font = "50px Impact";
 	ctx.fillStyle = "#ffffff";
 	ctx.textAlign = "center";
 	ctx.fillText("Game over! Thanks for playing :)",canvas.width/2,canvas.height/2);
@@ -771,7 +862,7 @@ var startNewLevel = function(wait,time_passed) {
     //Wait a while to spawn in the asteroids and let player know what level they're on
     if(time_passed < wait) {
 	//Display what level you're on
-	ctx.font = "20px LucidaConsole";
+	ctx.font = "20px Impact";
 	ctx.fillStyle = "#ffffff";
 	ctx.textAlign = "center";
 	ctx.fillText("Level "+level.toString(),canvas.width/2,canvas.height/4);

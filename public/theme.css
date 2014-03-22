@@ -1,11 +1,11 @@
 body {
-    padding:0;
-    margin:0;
-    width:100%;
-    position:absolute;
+  padding:0;
+  margin:0;
+  width:100%;
+  position:absolute;
 }
 
 canvas {
-    background-color:black;
+  /* font-family: 'Press Start 2P', cursive; */
+  background-color:black;
 }
-
