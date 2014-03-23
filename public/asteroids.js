@@ -462,7 +462,7 @@ function asteroid(x, y, r, dx, dy, id) {
     this.min_r_indx = this.r_offsets.indexOf(Math.min.apply(Math,this.r_offsets));
     //death animation stuff
     this.death_timer = 0;
-    this.death_anim_time = 1*60; //secs*60
+    this.death_anim_time = 0.5*60; //secs*60
     this.x_adds_midpoints = [];
     this.y_adds_midpoints = [];
     this.death_rotation_speeds = [];
@@ -477,6 +477,7 @@ function asteroid(x, y, r, dx, dy, id) {
 	this.x_death_drifts.push(0);
 	this.y_death_drifts.push(0);
     }
+    console.log("new ast created:",this.id,this);
 }
 
 
@@ -568,7 +569,7 @@ asteroid.prototype.displayTheta = function (th,color,len) {
 };
 
 asteroid.prototype.die = function (shot) {
-    console.log("asteroid dead",this.id,this.shot);
+    console.log("asteroid dead",this.id,shot);
     if (shot) {
 	p.addScore(5 * (level + round(this.r) - 1));
 	//Create new asteroids where the last one blew up if it was big enough
@@ -657,7 +658,7 @@ var deleteParticle = function(id) {
 
 var deleteAsteroid = function(id) {
     console.log("deleted:",asteroids[id].id,asteroids[id]);
-    null_asts.push(this.id);
+    null_asts.push(id);
     asteroids[id] = null;
 };
 
@@ -692,9 +693,11 @@ var spawnAsteroid = function(x,y,r,dx,dy,min_dist) {
     //Only push new elements if there aren't any free null ones
     if(null_asts.length > 0) {
 	var curr_id = null_asts.pop();
+	console.log("spawning new ast:",x, y, r, dx, dy, curr_id);
 	asteroids[curr_id] = new asteroid(x, y, r, dx, dy, curr_id);
     }
     else {
+	console.log("spawning new ast:",x, y, r, dx, dy, asteroids.length);
         asteroids.push(new asteroid(x, y, r, dx, dy, asteroids.length));
     }    
 };
