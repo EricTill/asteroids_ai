@@ -477,7 +477,7 @@ function asteroid(x, y, r, dx, dy, id) {
 	this.x_death_drifts.push(0);
 	this.y_death_drifts.push(0);
     }
-    console.log("new ast created:",this.id,this);
+    //console.log("new ast created:",this.id,this);
 }
 
 
@@ -554,7 +554,7 @@ asteroid.prototype.updatePosition = function () {
     if(this.death_timer > 0) {
 	this.death_timer++;
 	if(this.death_timer >= this.death_anim_time) {
-	    console.log("sent deletion request",this.id);
+	    //console.log("sent deletion request",this.id);
 	    deleteAsteroid(this.id);
 	}
     }
@@ -569,7 +569,7 @@ asteroid.prototype.displayTheta = function (th,color,len) {
 };
 
 asteroid.prototype.die = function (shot) {
-    console.log("asteroid dead",this.id,shot);
+    //console.log("asteroid dead",this.id,shot);
     if (shot) {
 	p.addScore(5 * (level + round(this.r) - 1));
 	//Create new asteroids where the last one blew up if it was big enough
@@ -657,7 +657,7 @@ var deleteParticle = function(id) {
 
 
 var deleteAsteroid = function(id) {
-    console.log("deleted:",asteroids[id].id,asteroids[id]);
+    //console.log("deleted:",asteroids[id].id,asteroids[id]);
     null_asts.push(id);
     asteroids[id] = null;
 };
@@ -693,11 +693,11 @@ var spawnAsteroid = function(x,y,r,dx,dy,min_dist) {
     //Only push new elements if there aren't any free null ones
     if(null_asts.length > 0) {
 	var curr_id = null_asts.pop();
-	console.log("spawning new ast:",x, y, r, dx, dy, curr_id);
+	//console.log("spawning new ast:",x, y, r, dx, dy, curr_id);
 	asteroids[curr_id] = new asteroid(x, y, r, dx, dy, curr_id);
     }
     else {
-	console.log("spawning new ast:",x, y, r, dx, dy, asteroids.length);
+	//console.log("spawning new ast:",x, y, r, dx, dy, asteroids.length);
         asteroids.push(new asteroid(x, y, r, dx, dy, asteroids.length));
     }    
 };
@@ -857,7 +857,41 @@ var updateGameState = function () {
 	ctx.font = "50px Impact";
 	ctx.fillStyle = "#ffffff";
 	ctx.textAlign = "center";
-	ctx.fillText("Game over! Thanks for playing :)",canvas.width/2,canvas.height/2);
+	ctx.fillText("Game over! Thanks for playing!",canvas.width/2,canvas.height/2);
+    ctx.fillText("Press space to play again",canvas.width/2,canvas.height/2+60);
+    for (var i = 0; i < asteroids.length; i++) {
+        if(asteroids[i] === null) {
+            continue;
+        }
+        asteroids[i].draw();
+        asteroids[i].updatePosition();
+        if(asteroids[i] === null) {
+            continue;
+        }
+    }
+    for (i = 0; i < particles.length; i++) {
+            if(particles[i] !== null) {
+            particles[i].draw();
+            particles[i].updatePosition();
+        }
+    }
+
+    if(pressed[' '.charCodeAt(0)] === true) {
+        //restart the game - just reinitialize everything that needs to be (hopefully...)
+        shoot_lock = false;
+        frame = 0;
+        dist;
+        p = new player(canvas.width/2,canvas.height/2);
+        null_asts = [0];
+        null_buls = [0];
+        null_pars = [0];
+        asts_remaining = 0;
+        level = 1;
+        transition_time = 0;
+        bullets = [];
+        asteroids = [];
+        particles = [];
+    }
     }
 };
 
@@ -884,8 +918,8 @@ var startNewLevel = function(wait,time_passed) {
 	transition_time = 0;
 	//TODO: Make sure asteroids don't spawn on top of player
 	for(var i = 0; i < level * asts_per_level; i++) {
-	    //              x,                              y,                    r,               dx,              dy     min_dist
-	    spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1,1), 1*getUnif(-1,1),100);
+	    //              x,                              y,                    r,               dx,              dy           min_dist
+	    spawnAsteroid(getUnif(0,canvas.width), getUnif(0,canvas.height), getUnif(20,50), 1*getUnif(-1.5,1.5), 1*getUnif(-1.5,1.5),100);
 	}
 	level++;
     }
@@ -901,7 +935,7 @@ var getControlInputs = function () {
 	p.shoot();
     }
     
-    //use arrow keys to move player around
+    //use arrow keys or WAD to move player around
     up = pressed[38] || pressed['W'.charCodeAt(0)] ? 1 : 0;
     //down = pressed[40] || pressed['S'.charCodeAt(0)] ? 1 : 0;
     left = pressed[37] || pressed['A'.charCodeAt(0)] ? 1 : 0;
@@ -936,7 +970,7 @@ var preciseCollideAstPlayer = function(ship,ast) {
 	    ya2 = ast.y_adds[k+1] + ast.y;
 	    info = getIntersectionLines(xa1,ya1,xa2,ya2,xp1,yp1,xp2,yp2);
 	    if (info.online) {
-		for(var n = 0; n <= getRandInt(10,20); n++){
+		for(var n = 0; n <= getRandInt(50,70); n++){
 		    spawnParticle(info.x,info.y);
 		}
 		return true;
@@ -947,7 +981,7 @@ var preciseCollideAstPlayer = function(ship,ast) {
 };
 
 var getIntersectionLines = function (xa1,ya1,xa2,ya2,xp1,yp1,xp2,yp2) {
-    //This function takes in two points and returns:
+    //This function takes in four points and returns:
     //true if there is an intersection of the lines a and p 
     //AND that intersection is on the line segment between these points.
     //false otherwise
@@ -958,6 +992,7 @@ var getIntersectionLines = function (xa1,ya1,xa2,ya2,xp1,yp1,xp2,yp2) {
 
     if (mp === ma) { return {online: false};} //not entirely true... two line segments could define the same line :(
 
+    //Compute solution for basic linear system
     var xi = ((ya1-ma*xa1)-(yp1-mp*xp1))/(mp-ma);
     var yi = (-ma*(yp1-mp*xp1)+mp*(ya1-ma*xa1))/(mp-ma);
 
