@@ -857,7 +857,7 @@ var updateGameState = function () {
 	ctx.font = "50px Impact";
 	ctx.fillStyle = "#ffffff";
 	ctx.textAlign = "center";
-	ctx.fillText("Game over! Thanks for playing!",canvas.width/2,canvas.height/2);
+	ctx.fillText("Thanks for playing! You scored: " + p.score,canvas.width/2,canvas.height/2);
     ctx.fillText("Press space to play again",canvas.width/2,canvas.height/2+60);
     for (var i = 0; i < asteroids.length; i++) {
         if(asteroids[i] === null) {
