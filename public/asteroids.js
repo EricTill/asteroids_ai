@@ -758,6 +758,7 @@ var asts_remaining = 0;
 var level = 1;
 var transition_time = 0;
 var asts_per_level = 7;
+var new_game = true;
 
 var updateGameState = function () {
 
@@ -891,6 +892,7 @@ var updateGameState = function () {
         bullets = [];
         asteroids = [];
         particles = [];
+        new_game = false;
     }
     }
 };
@@ -903,7 +905,7 @@ var startNewLevel = function(wait,time_passed) {
 	ctx.fillStyle = "#ffffff";
 	ctx.textAlign = "center";
 	ctx.fillText("Level "+level.toString(),canvas.width/2,canvas.height/4);
-	if (level === 1) {
+	if (level === 1 && new_game) {
 	    ctx.fillText("WAD or arrow keys to move",canvas.width/2,3*canvas.height/4);
 	    ctx.fillText("Spacebar to shoot",canvas.width/2,3*canvas.height/4+30);
 	    ctx.fillText("Press 'M' key to mute/unmute audio",canvas.width/2,3*canvas.height/4+60);
