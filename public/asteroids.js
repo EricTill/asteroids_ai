@@ -347,8 +347,13 @@ player.prototype.die = function () {
     for(var i = 0; i<this.x_adds_midpoints.length; i++) {
 	this.death_rotation_speeds[i] = getUnif(-0.03,0.03);
 	this.death_thetas[i] = 0;
-	this.x_death_drifts[i] = getUnif(-45,45);
-	this.y_death_drifts[i] = getUnif(-45,45);
+	//First, calc angle between midpoint and player location
+	var ang = circConstrain(atan2(this.y_adds_midpoints[i],this.x_adds_midpoints[i]));
+	ang += getUnif((-30/360)*2*pi,(30/360)*2*pi);
+	var speed = getUnif(70,100);
+	console.log(ang,speed,speed * cos(ang),speed * sin(ang));
+	this.x_death_drifts[i] = speed * cos(ang);
+	this.y_death_drifts[i] = speed * sin(ang);
     }
 
     if (!muted) {
