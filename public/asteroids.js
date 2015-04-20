@@ -9,6 +9,7 @@ var touched = false;
 var delta_t = 0.05;
 var muted = true;
 var mute_lock = false;
+var mobile = false;
 //var thrust  = new Audio();
 var splode1 = new Audio();
 var splode2 = new Audio();
@@ -726,13 +727,20 @@ var setup = function () {
     document.addEventListener('keyup', function (e) {
         pressed[e.keyCode] = false;
     });
-    document.addEventListener('touchstart', function () {
-	touched = true;
+    document.addEventListener('touchstart', function (e) {
+	//Just shoot and turn to face direction of touch. Movement?
+	mobile = true;
+	e.preventDefault();
+	var t = e.changedTouches[0];
+	if (p.death_timer <= 0) {
+    	    p.theta = circConstrain(atan2(t.pageY-p.y,t.pageX-p.x));
+    	    p.shoot();
+	}
+    	touched = true;
     });
-    document.addEventListener('touchend', function () {
-	touched = false;
+    document.addEventListener('touchend', function (e) {
+    	touched = false;
     });
-
 };
 
 
@@ -858,8 +866,13 @@ var updateGameState = function () {
 	ctx.font = "50px Impact";
 	ctx.fillStyle = "#ffffff";
 	ctx.textAlign = "center";
-	ctx.fillText("Thanks for playing! You scored: " + p.score,canvas.width/2,canvas.height/2);
-    ctx.fillText("Press space to play again",canvas.width/2,canvas.height/2+60);
+	ctx.fillText("Thanks for playing!",canvas.width/2,canvas.height/2);
+	ctx.fillText("You scored: " + p.score,canvas.width/2,canvas.height/2+60);
+	if (mobile)
+	    ctx.fillText("Touch screen to play again",canvas.width/2,canvas.height/2+120);
+	else
+	    ctx.fillText("Press space to play again",canvas.width/2,canvas.height/2+120);
+	    
     for (var i = 0; i < asteroids.length; i++) {
         if(asteroids[i] === null) {
             continue;
@@ -877,7 +890,7 @@ var updateGameState = function () {
         }
     }
 
-    if(pressed[' '.charCodeAt(0)] === true) {
+    if(pressed[' '.charCodeAt(0)] === true || touched === true) {
         //restart the game - just reinitialize everything that needs to be (hopefully...)
         shoot_lock = false;
         frame = 0;
@@ -907,7 +920,7 @@ var startNewLevel = function(wait,time_passed) {
 	ctx.fillText("Level "+level.toString(),canvas.width/2,canvas.height/4);
 	if (level === 1 && new_game) {
 	    ctx.fillText("WAD or arrow keys to move",canvas.width/2,3*canvas.height/4);
-	    ctx.fillText("Spacebar to shoot",canvas.width/2,3*canvas.height/4+30);
+	    ctx.fillText("Spacebar or touch screen to shoot",canvas.width/2,3*canvas.height/4+30);
 	    ctx.fillText("Press 'M' key to mute/unmute audio",canvas.width/2,3*canvas.height/4+60);
 	}
     }
@@ -1042,6 +1055,7 @@ var ticktock = function (frame) {
 	console.log('Tick');
     }
 };
+
 
 //Main loop
 var gameLoop = function () {
