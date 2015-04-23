@@ -745,6 +745,10 @@ var setup = function () {
     document.addEventListener('touchend', function (e) {
     	touched = false;
     });
+    
+    window.onresize = function(event) {
+	getSetStageSize(1,1);
+    };
 };
 
 
