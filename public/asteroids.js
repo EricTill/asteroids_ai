@@ -134,18 +134,7 @@ player.prototype.move = function(accel,theta_dir) {
     var temp_dx;
     var temp_dy;
 
-    //Calc dtheta - should rise exponentially to a max value based on number of consecutive identical turn inputs
-    if (theta_dir != 0 && theta_dir == this.last_theta_dir) {
-	this.num_consecutive_turns++;
-	var dtheta = min(this.max_dtheta, this.min_dtheta * exp(this.theta_b * this.num_consecutive_turns));
-	this.theta += theta_dir * dtheta;
-    }
-    else {
-	this.num_consecutive_turns = 0;
-	this.theta += this.min_dtheta * theta_dir;
-    }
-    this.last_theta_dir = theta_dir;
-    this.theta = circConstrain(this.theta);
+    this.theta = circConstrain(this.theta + theta_dir * this.max_dtheta);
 
     temp_dx = this.dx + accel * cos(this.theta);
     temp_dy = this.dy + accel * sin(this.theta);
@@ -361,6 +350,28 @@ player.prototype.die = function () {
 
 };
 
+player.prototype.ai = function() {
+    //Should return an "inputs" object which emulate keypresses/screen touches.
+    var inputs = {};
+    inputs.up = 0; //not going to implement movement at first.
+    inputs.left = 0;
+    inputs.right = 0;
+    inputs.shoot = false;
+
+    //Need to decide what to aim at. Rank asteroids in order of their threat.
+    for(var i=0; i<asteroids.length; i++) {
+	var ast = asteroids[i];
+	if (ast === null)
+	    continue;
+	var ast_r = ast.max_r;
+	var me_r = p.max_r;
+	
+	
+    }
+
+    return inputs;
+};
+
 player.prototype.respawn = function() {
     this.extra_lives--;
     this.x = canvas.width/2;
@@ -431,8 +442,8 @@ function asteroid(x, y, r, dx, dy, id) {
     this.y = y;
     this.r = r;
     this.max_veloc = 40;
-    this.x_veloc = dx;
-    this.y_veloc = dy;
+    this.dx = dx;
+    this.dy = dy;
     this.id = id;
     this.friction = 1;
     
@@ -486,9 +497,41 @@ function asteroid(x, y, r, dx, dy, id) {
 }
 
 
+
+asteroid.prototype.displayVeloc = function () {
+    ctx.strokeStyle="#FF0000";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(this.x,this.y);
+    ctx.lineTo(this.x + 10000*this.dx,this.y + 10000*this.dy);
+    ctx.stroke();
+};
+
+asteroid.prototype.displayThreat = function() {
+    ctx.strokeStyle="#00FF00";
+    ctx.lineWidth = 1;
+    var v_mag = sqrt(this.dx*this.dx + this.dy*this.dy);
+
+    ctx.beginPath();
+    var x1 = this.x + (-this.max_r * (this.dy/v_mag));
+    var y1 = this.y + (this.max_r * (this.dx/v_mag));
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x1 + 10000*this.dx,y1 + 10000*this.dy);
+    ctx.stroke();
+
+    ctx.beginPath();
+    var x2 = this.x - (-this.max_r * (this.dy/v_mag));
+    var y2 = this.y - (this.max_r * (this.dx/v_mag));
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2 + 10000*this.dx,y2 + 10000*this.dy);
+    ctx.stroke();
+};
+
 //Asteroid draw function
 asteroid.prototype.draw = function () {
 	//asteroid is in the middle of a death animation
+    this.displayVeloc();
+    this.displayThreat();
 	if(this.death_timer > 0) {
 	    var x1,x2,y1,y2,tmp_x1,tmp_x2,tmp_y1,tmp_y2,prc;
 	    prc = ((this.death_anim_time-this.death_timer+1)/this.death_anim_time);
@@ -538,10 +581,10 @@ asteroid.prototype.draw = function () {
 
 //Updates the position of an asteroid
 asteroid.prototype.updatePosition = function () {
-    //this.x_veloc = min(this.x_veloc, this.max_veloc);
-    //this.y_veloc = min(this.y_veloc, this.max_veloc);
-    this.x += this.x_veloc;
-    this.y += this.y_veloc;
+    //this.dx = min(this.dx, this.max_veloc);
+    //this.dy = min(this.dy, this.max_veloc);
+    this.x += this.dx;
+    this.y += this.dy;
 
     //Edge collision detection
     if (this.x > canvas.width) {
@@ -573,6 +616,14 @@ asteroid.prototype.displayTheta = function (th,color,len) {
     ctx.stroke();
 };
 
+// asteroid.prototype.displayThreat = function() {
+//     ctx.strokeStyle = "#00FF00";
+//     ctx.beginPath();
+//     ctx.moveTo(this.x,this.y);
+//     ctx.lineTo(this.x + 1000*this.dx,this.y + 10000*this.dy);
+//     ctx.stroke();    
+// };
+
 asteroid.prototype.die = function (shot) {
     //console.log("asteroid dead",this.id,shot);
     if (shot) {
@@ -583,7 +634,7 @@ asteroid.prototype.die = function (shot) {
 	    for(var i = 0; i < n; i++) {
 		//                        x                                        y
 		spawnAsteroid(this.x+getUnif(-this.max_r/n,this.max_r/n), this.y+getUnif(-this.max_r/n,this.max_r/n),
-			      max(getUnif(this.r/n,this.r*(n-1)/n),15), this.x_veloc+getUnif(-1.5,1.5), this.y_veloc+getUnif(-1.5,1.5), 0);
+			      max(getUnif(this.r/n,this.r*(n-1)/n),15), this.dx+getUnif(-1.5,1.5), this.dy+getUnif(-1.5,1.5), 0);
 		//                        r                                         dx                         dy                    min_dist
 	    }
 	}
@@ -721,31 +772,8 @@ var moveAwayFromPoint = function(point,orig,dist,dim) {
 };
 
 
-//Creates the controler events
+//Creates the controler events - used to. Not needed for ai
 var setup = function () {
-
-    //Setup events for control inputs
-    document.addEventListener('keydown', function (e) {
-        pressed[e.keyCode] = true;
-    });
-    document.addEventListener('keyup', function (e) {
-        pressed[e.keyCode] = false;
-    });
-    document.addEventListener('touchstart', function (e) {
-	//Just shoot and turn to face direction of touch. Movement?
-	mobile = true;
-	e.preventDefault();
-	var t = e.changedTouches[0];
-	if (p.death_timer <= 0) {
-    	    p.theta = circConstrain(atan2(t.pageY-p.y,t.pageX-p.x));
-    	    p.shoot();
-	}
-    	touched = true;
-    });
-    document.addEventListener('touchend', function (e) {
-    	touched = false;
-    });
-    
     window.onresize = function(event) {
 	getSetStageSize(1,1);
     };
@@ -829,7 +857,7 @@ var updateGameState = function () {
 	}
 
 	if(asts_remaining <= 0) {
-	    var wait_time = level == 1 ? 7 : 2;
+	    var wait_time = level == 1 ? 0.5 : 0.2;
 	    startNewLevel(wait_time*60,transition_time++); //f(level,wait-time) wait-time measured in secs*60
 	}
     	
@@ -874,12 +902,8 @@ var updateGameState = function () {
 	ctx.font = "50px Impact";
 	ctx.fillStyle = "#ffffff";
 	ctx.textAlign = "center";
-	ctx.fillText("Thanks for playing!",canvas.width/2,canvas.height/2);
-	ctx.fillText("You scored: " + p.score,canvas.width/2,canvas.height/2+60);
-	if (mobile)
-	    ctx.fillText("Touch screen to play again",canvas.width/2,canvas.height/2+120);
-	else
-	    ctx.fillText("Press space to play again",canvas.width/2,canvas.height/2+120);
+	ctx.fillText("It scored: " + p.score,canvas.width/2,canvas.height/2);
+	var wait = 60;
 	    
     for (var i = 0; i < asteroids.length; i++) {
         if(asteroids[i] === null) {
@@ -898,11 +922,11 @@ var updateGameState = function () {
         }
     }
 
-    if(pressed[' '.charCodeAt(0)] === true || touched === true) {
+    while(wait > 0) {
         //restart the game - just reinitialize everything that needs to be (hopefully...)
+	wait--;
         shoot_lock = false;
         frame = 0;
-        dist;
         p = new player(canvas.width/2,canvas.height/2);
         null_asts = [0];
         null_buls = [0];
@@ -949,31 +973,21 @@ var startNewLevel = function(wait,time_passed) {
 };
 
 var getControlInputs = function () {
+    
+    //Obviously this used to be controlled by the player. Now it has to be controlled by the AI.
+    var inputs = p.ai();
 
-    if (pressed[' '.charCodeAt(0)] === false) {
-	shoot_lock = false;
-    }
-    if (!shoot_lock && pressed[' '.charCodeAt(0)] === true) {
-	shoot_lock = true;
-	p.shoot();
-    }
-    
-    //use arrow keys or WAD to move player around
-    up = pressed[38] || pressed['W'.charCodeAt(0)] ? 1 : 0;
-    //down = pressed[40] || pressed['S'.charCodeAt(0)] ? 1 : 0;
-    left = pressed[37] || pressed['A'.charCodeAt(0)] ? 1 : 0;
-    right = pressed[39] || pressed['D'.charCodeAt(0)] ? 1 : 0;
-    
-    //Couldn't ever get this to work right...
-    //if(up) {    
-    //	//new Audio('sound_effects/thrust_fade.wav').play();
-    //	//thrust.play();
-    //	//rcs.play();
-    //}
+    //Determine up, left and right.
+    up = inputs.up;
+    left = inputs.left;
+    right = inputs.right;
 
     p.thrusting = up;
+
     p.move(0.1 * up, right - left);
-    //p.move(0.1 * (up - down), dtheta * (right - left));
+    if (inputs.shoot)
+	p.shoot();
+
     //p.displayVeloc();
     //p.displayTheta(p.theta);
 
