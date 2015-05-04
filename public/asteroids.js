@@ -363,8 +363,25 @@ player.prototype.ai = function() {
 	var ast = asteroids[i];
 	if (ast === null)
 	    continue;
-	var ast_r = ast.max_r;
-	var me_r = p.max_r;
+	var x_dir = ast.dx > 0 ? 1 : -1;
+	var y_dir = ast.dy > 0 ? 1 : -1;
+	var ast_horiz_dir = ast.x > p.x ? 1 : -1;
+	var ast_verti_dir = ast.y > p.y ? 1 : -1;
+	//This checks if the player is "behind" the asteroid or not. If the player
+	//is "behind" the asteroid, then my logic to check if the player is in the 
+	//threat region of an asteroid won't work.
+	if (!((x_dir === ast_horiz_dir) || (y_dir === ast_verti_dir))) {
+	    ctx.beginPath();
+	    ctx.fillStyle = "#0000ff";
+	    ctx.moveTo(p.x,p.y);
+	    ctx.lineTo(ast.x,ast.y);
+	    ctx.stroke();
+	}
+	    
+	
+
+	var a_r = ast.max_r;
+	var p_r = p.max_r;
 	
 	
     }
