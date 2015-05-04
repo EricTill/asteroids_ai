@@ -85,7 +85,7 @@ function player(x,y) {
     this.y_shape = [0, -7, 0, 7, 0];
     this.last_theta_dir = 0;
     this.min_dtheta =  (2*pi/(60*3.0)); // measured time it takes to do a full rotation
-    this.max_dtheta =  (2*pi/(60*1.25)); // measured time it takes to do a full rotation
+    this.max_dtheta =  (2*pi/(60*3)); // measured time it takes to do a full rotation
     this.frames_to_max_dtheta = 0.05*60; //measured in seconds*60
     this.theta_b = nlog(this.max_dtheta/this.min_dtheta)/this.frames_to_max_dtheta;
     this.num_consecutive_turn = 0;
@@ -379,7 +379,7 @@ player.prototype.ai = function() {
 
     for(var i=0; i<asteroids.length; i++) {
 	var ast = asteroids[i];
-	if (ast === null)
+	if (ast === null || ast.death_timer > 0)
 	    continue;
 
 	var threat_analysis = this.determineIfThreat(ast);
@@ -407,44 +407,66 @@ player.prototype.ai = function() {
     else
 	return inputs;
     
+    var min_dist = this.shot_min_dist(ast);
+    if (min_dist < ast.min_r) {
+	inputs.shoot = true;
+    }
+    
+    //Figure out if turning right or left makes the shot better.
+    //If both seem to suck, try turning towards it manually based
+    //on the angle between the ship and ast.
+    var if_turn_right = this.shot_min_dist(ast,this.max_dtheta);
+    var if_turn_left = this.shot_min_dist(ast,-this.max_dtheta);
+    if (if_turn_right < if_turn_left)
+	inputs.right = 1;
+    else if (if_turn_right !== if_turn_left)
+	inputs.left = 1;
+    else if (if_turn_right === 1000000 && if_turn_left === 1000000) {
+	var ang = circConstrain(atan2(ast.y-p.y,ast.x-p.x));
+	if (ang > this.theta)
+	    inputs.right = 1;
+	else
+	    inputs.left = 1;
+    }
+	
+    return inputs;
+};
+
+player.prototype.shot_min_dist = function(ast,theta_correction) {
+    //This function returns the minimum distance a bullet will ever
+    //reach between itself and an asteroid. This does NOT take the
+    //torus universe effect into account.
+    theta_correction = theta_correction || 0;
+    
     //Calc velocity of bullet:
     var vx;
     var vy;
-    var speed = sqrt(p.dx*p.dx,p.dy*p.dy);
+    var speed = sqrt(this.dx*this.dx,this.dy*this.dy);
     speed = max(5,speed);
-    vx = (speed + 5) * cos(p.theta) + p.dx;
-    vy = (speed + 5) * sin(p.theta) + p.dy;
+    vx = (speed + 5) * cos(this.theta + theta_correction) + this.dx;
+    vy = (speed + 5) * sin(this.theta + theta_correction) + this.dy;
     
     //Check if shot would get within min_r of ast
-    var a = p.x + p.x_adds[0];
+    var a = this.x + this.x_adds[0];
     var b = vx;
     var c = ast.x;
     var d = ast.dx;
-    var e = p.y + p.y_adds[0];
+    var e = this.y + this.y_adds[0];
     var f = vy;
     var g = ast.y;
     var h = ast.dy;
     var t_min = (a*(d-b) + b*c - (c*d) - (e*f) + (e*h) + (f*g) - (g*h))/((b*b) - (2*b*d) + (d*d) + (f-h)*(f-h));
+    if (t_min < 0)
+	return 1000000;
     ctx.fillStyle = "#ff7700";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(a+b*t_min,e+f*t_min,4,0,2*pi);
     ctx.fill();
-    var x_part = (a + b * t_min - c - d *t_min)*(a + b * t_min - c - d *t_min);
-    var y_part = (e + f * t_min - g - h *t_min)*(e + f * t_min - g - h *t_min);
+    var x_part = (a + b * t_min - c - d * t_min)*(a + b * t_min - c - d * t_min);
+    var y_part = (e + f * t_min - g - h * t_min)*(e + f * t_min - g - h * t_min);
     var min_dist = sqrt(x_part + y_part);
-    if (min_dist < ast.min_r)
-	inputs.shoot = true;
-    
-    
-    //Otherwise, find angle between player and asteroid (from player's pov)
-    //and turn towards the asteroid
-    var ang = circConstrain(atan2(ast.y-p.y,ast.x-p.x));
-    if (ang > p.theta)
-	inputs.right = 1;
-    else
-	inputs.left = 1;
-    return inputs;
+    return min_dist;
 };
 
 player.prototype.determineIfThreat = function(ast){
@@ -689,7 +711,7 @@ asteroid.prototype.displayThreat = function() {
 //Asteroid draw function
 asteroid.prototype.draw = function () {
 	//asteroid is in the middle of a death animation
-    this.displayVeloc();
+    //this.displayVeloc();
     this.displayThreat();
 	if(this.death_timer > 0) {
 	    var x1,x2,y1,y2,tmp_x1,tmp_x2,tmp_y1,tmp_y2,prc;
@@ -954,6 +976,7 @@ var level = 1;
 var transition_time = 0;
 var asts_per_level = 7;
 var new_game = true;
+var restart_wait = 300;
 
 var updateGameState = function () {
 
@@ -1054,7 +1077,6 @@ var updateGameState = function () {
 	ctx.fillStyle = "#ffffff";
 	ctx.textAlign = "center";
 	ctx.fillText("It scored: " + p.score,canvas.width/2,canvas.height/2);
-	var wait = 60;
 	    
     for (var i = 0; i < asteroids.length; i++) {
         if(asteroids[i] === null) {
@@ -1073,9 +1095,9 @@ var updateGameState = function () {
         }
     }
 
-    while(wait > 0) {
+    while(restart_wait > 0) {
         //restart the game - just reinitialize everything that needs to be (hopefully...)
-	wait--;
+	restart_wait--;
         shoot_lock = false;
         frame = 0;
         p = new player(canvas.width/2,canvas.height/2);
@@ -1121,6 +1143,7 @@ var startNewLevel = function(wait,time_passed) {
 	}
 	level++;
     }
+    restart_wait = 300;
 };
 
 var getControlInputs = function () {
