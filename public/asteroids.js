@@ -370,8 +370,11 @@ player.prototype.ai = function() {
 	//This checks if the player is "behind" the asteroid or not. If the player
 	//is "behind" the asteroid, then my logic to check if the player is in the 
 	//threat region of an asteroid won't work.
+
+
+	//NOTE: Currently, this doesn't seem to be working perfectly! It's all brobis'd up
 	if (((x_dir === ast_horiz_dir) || (y_dir === ast_verti_dir)))
-	    continue;
+	   continue;
 	
 	ctx.beginPath();
 	ctx.strokeStyle = "#0000ff";
@@ -389,15 +392,62 @@ player.prototype.ai = function() {
 	p2.x = p.x - (-p_r * (p.y - ast.y)/dist_p_to_ast);
 	p2.y = p.y - (p_r * (p.x - ast.x)/dist_p_to_ast);
 
+	var th1 = {}; var th2 = {};
+	var v_mag = sqrt(ast.dx*ast.dx + ast.dy*ast.dy);
+	th1.x1 = ast.x + (-ast.max_r * (ast.dy/v_mag));
+	th1.y1 = ast.y + (ast.max_r * (ast.dx/v_mag));
+	th1.x2 = th1.x1 + 10000*ast.dx;
+	th1.y2 = th1.y1 + 10000*ast.dy;
+	
+	th2.x1 = ast.x - (-ast.max_r * (ast.dy/v_mag));
+	th2.y1 = ast.y - (ast.max_r * (ast.dx/v_mag));
+	th2.x2 = th1.x1 + 10000*ast.dx;
+	th2.y2 = th1.y1 + 10000*ast.dy;
+
+	var int_11 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p1.x,p1.y,ast.x,ast.y);
+	var int_12 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p2.x,p2.y,ast.x,ast.y);
+	var int_21 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p1.x,p1.y,ast.x,ast.y);
+	var int_22 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p2.x,p2.y,ast.x,ast.y);
+
+	ctx.fillStyle = "#ffff00";
+	ctx.lineWidth = 1;
 	ctx.beginPath();
-	ctx.strokeStyle = "#00ffff";
+	ctx.arc(int_11.x,int_11.y,3,0,2*pi);
+	ctx.fill();
+
+	ctx.fillStyle = "#ffff00";
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.arc(int_21.x,int_21.y,3,0,2*pi);
+	ctx.fill();
+
+	ctx.fillStyle = "#ffff00";
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.arc(int_12.x,int_12.y,3,0,2*pi);
+	ctx.fill();
+
+	ctx.fillStyle = "#ffff00";
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.arc(int_22.x,int_22.y,3,0,2*pi);
+	ctx.fill();
+
+	var log11 = int_11.online ? 1 : 0;
+	var log12 = int_12.online ? 1 : 0;
+	var log21 = int_21.online ? 1 : 0;
+	var log22 = int_22.online ? 1 : 0;
+	var logsum = log11 + log21 + log12 + log22;
+	
+	var stroke = logsum < 1 ? "#ff00ff" : "#00ffff";
+	ctx.beginPath();
+	ctx.strokeStyle = stroke;
 	ctx.moveTo(p1.x,p1.y);
 	ctx.lineTo(ast.x,ast.y);
 	ctx.stroke();
 
-
 	ctx.beginPath();
-	ctx.strokeStyle = "#00ffff";
+	ctx.strokeStyle = stroke;
 	ctx.moveTo(p2.x,p2.y);
 	ctx.lineTo(ast.x,ast.y);
 	ctx.stroke();
