@@ -350,6 +350,18 @@ player.prototype.die = function () {
 
 };
 
+function locationOf(element, array, start, end) {
+  start = start || 0;
+  end = end || array.length;
+  var pivot = parseInt(start + (end - start) / 2, 10);
+  if (end-start <= 1 || array[pivot] === element) return pivot;
+  if (array[pivot] < element) {
+    return locationOf(element, array, pivot, end);
+  } else {
+    return locationOf(element, array, start, pivot);
+  }
+}
+
 player.prototype.ai = function() {
     //Should return an "inputs" object which emulate keypresses/screen touches.
     var inputs = {};
@@ -359,90 +371,118 @@ player.prototype.ai = function() {
     inputs.shoot = false;
 
     //Need to decide what to aim at. Rank asteroids in order of their threat.
+    //Asteroids on a collision course obviously get the highest ranking.
+    //Asteroids not on a collision course are ranked somehow and gotten to if there are no current threats
+    var threats = []; //asteroids on a collision course
+    var threat_times = []; //time til collision for each asteroid on a collision course
+    var targets = []; //asteroids just there to shoot
+
     for(var i=0; i<asteroids.length; i++) {
 	var ast = asteroids[i];
 	if (ast === null)
 	    continue;
-	var x_dir = ast.dx > 0 ? 1 : -1;
-	var y_dir = ast.dy > 0 ? 1 : -1;
-	var ast_horiz_dir = ast.x > p.x ? 1 : -1;
-	var ast_verti_dir = ast.y > p.y ? 1 : -1;
-	//This checks if the player is "behind" the asteroid or not. If the player
-	//is "behind" the asteroid, then my logic to check if the player is in the 
-	//threat region of an asteroid won't work.
 
-
-	//NOTE: Currently, this doesn't seem to be working perfectly! It's all brobis'd up
-	if (((x_dir === ast_horiz_dir) || (y_dir === ast_verti_dir)))
-	   continue;
-	
-	ctx.beginPath();
-	ctx.strokeStyle = "#0000ff";
-	ctx.moveTo(p.x,p.y);
-	ctx.lineTo(ast.x,ast.y);
-	ctx.stroke();
-
-	var p_r = p.max_r;
-	var ast_r = ast.max_r;
-	
-	var dist_p_to_ast = sqrt((p.y - ast.y)*(p.y - ast.y) + (p.x - ast.x)*(p.x - ast.x));
-	var p1 = {}; var p2 = {};
-	p1.x = p.x + (-p_r * (p.y - ast.y)/dist_p_to_ast);
-	p1.y = p.y + (p_r * (p.x - ast.x)/dist_p_to_ast);
-	p2.x = p.x - (-p_r * (p.y - ast.y)/dist_p_to_ast);
-	p2.y = p.y - (p_r * (p.x - ast.x)/dist_p_to_ast);
-
-	var th1 = {}; var th2 = {};
-	var v_mag = sqrt(ast.dx*ast.dx + ast.dy*ast.dy);
-	th1.x1 = ast.x + (-ast.max_r * (ast.dy/v_mag));
-	th1.y1 = ast.y + (ast.max_r * (ast.dx/v_mag));
-	th1.x2 = th1.x1 + 10000*ast.dx;
-	th1.y2 = th1.y1 + 10000*ast.dy;
-	
-	th2.x1 = ast.x - (-ast.max_r * (ast.dy/v_mag));
-	th2.y1 = ast.y - (ast.max_r * (ast.dx/v_mag));
-	th2.x2 = th1.x1 + 10000*ast.dx;
-	th2.y2 = th1.y1 + 10000*ast.dy;
-
-	var dist1 = (th1.x1 - p.x)*(th1.x1 - p.x) + (th1.y1 - p.y)*(th1.y1 - p.y);
-	var dist2 = (th2.x1 - p.x)*(th2.x1 - p.x) + (th2.y1 - p.y)*(th2.y1 - p.y);
-
-	var int1,int2;
-	if (dist1 < dist2) {
-	    int1 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p1.x,p1.y,ast.x,ast.y);
-	    int2 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p2.x,p2.y,ast.x,ast.y);
-	} else {
-	    int1 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p1.x,p1.y,ast.x,ast.y);
-	    int2 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p2.x,p2.y,ast.x,ast.y);
+	var threat_analysis = this.determineIfThreat(ast);
+	if (threat_analysis.is_threat) {
+	    //put in right place in ordered list of threats
+	    var ind = locationOf(threat_analysis.time_til_impact,threat_times);
+	    threat_times.splice(ind + 1, 0, threat_analysis.time_til_impact);
+	    threats.splice(ind + 1, 0, i);
+	    console.log(threat_analysis.time_til_impact,threats,threat_times);
 	}
-
-	ctx.fillStyle = "#ffff00";
-	ctx.lineWidth = 1;
-	ctx.beginPath();
-	ctx.arc(int1.x,int1.y,3,0,2*pi);
-	ctx.fill();
-
-	ctx.fillStyle = "#ffff00";
-	ctx.lineWidth = 1;
-	ctx.beginPath();
-	ctx.arc(int2.x,int2.y,3,0,2*pi);
-	ctx.fill();
-
-	var stroke = int1.online && int2.online ? "#00ffff" : "#ff00ff";
-	ctx.beginPath();
-	ctx.strokeStyle = stroke;
-	ctx.moveTo(p1.x,p1.y);
-	ctx.lineTo(ast.x,ast.y);
-	ctx.stroke();
-
-	ctx.beginPath();
-	ctx.strokeStyle = stroke;
-	ctx.moveTo(p2.x,p2.y);
-	ctx.lineTo(ast.x,ast.y);
-	ctx.stroke();
+	else {
+	    //prioritize no-threat asts
+	}
     }
 
+    //Now that the list of threats has been determined, start to deal with them.
+    //Turn the ship to aim at the asteroid and shoot when optimal.
+    
     return inputs;
+};
+
+player.prototype.determineIfThreat = function(ast){
+    var p_r = p.max_r;
+    var ast_r = ast.max_r;
+    
+    var x_dir = ast.dx > 0 ? 1 : -1;
+    var y_dir = ast.dy > 0 ? 1 : -1;
+    var ast_horiz_dir = ast.x > p.x ? 1 : -1;
+    var ast_verti_dir = ast.y > p.y ? 1 : -1;
+    //This checks if the player is "behind" the asteroid or not. If the player
+    //is "behind" the asteroid, then my logic to check if the player is in the 
+    //threat region of an asteroid won't work.
+    
+    
+    //NOTE: Currently, this doesn't seem to be working perfectly! It's all brobis'd up
+    if (((x_dir === ast_horiz_dir) || (y_dir === ast_verti_dir)))
+	return(false);
+    ctx.beginPath();
+    ctx.strokeStyle = "#0000ff";
+    ctx.moveTo(p.x,p.y);
+    ctx.lineTo(ast.x,ast.y);
+    ctx.stroke();
+    
+    var dist_p_to_ast = sqrt((p.y - ast.y)*(p.y - ast.y) + (p.x - ast.x)*(p.x - ast.x));
+    var p1 = {}; var p2 = {};
+    p1.x = p.x + (-p_r * (p.y - ast.y)/dist_p_to_ast);
+    p1.y = p.y + (p_r * (p.x - ast.x)/dist_p_to_ast);
+    p2.x = p.x - (-p_r * (p.y - ast.y)/dist_p_to_ast);
+    p2.y = p.y - (p_r * (p.x - ast.x)/dist_p_to_ast);
+    
+    var th1 = {}; var th2 = {};
+    var v_mag = sqrt(ast.dx*ast.dx + ast.dy*ast.dy);
+    th1.x1 = ast.x + (-ast.max_r * (ast.dy/v_mag));
+    th1.y1 = ast.y + (ast.max_r * (ast.dx/v_mag));
+    th1.x2 = th1.x1 + 10000*ast.dx;
+    th1.y2 = th1.y1 + 10000*ast.dy;
+    
+    th2.x1 = ast.x - (-ast.max_r * (ast.dy/v_mag));
+    th2.y1 = ast.y - (ast.max_r * (ast.dx/v_mag));
+    th2.x2 = th1.x1 + 10000*ast.dx;
+    th2.y2 = th1.y1 + 10000*ast.dy;
+    
+    var dist1 = (th1.x1 - p.x)*(th1.x1 - p.x) + (th1.y1 - p.y)*(th1.y1 - p.y);
+    var dist2 = (th2.x1 - p.x)*(th2.x1 - p.x) + (th2.y1 - p.y)*(th2.y1 - p.y);
+    
+    var int1,int2;
+    if (dist1 < dist2) {
+	int1 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p1.x,p1.y,ast.x,ast.y);
+	int2 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p2.x,p2.y,ast.x,ast.y);
+    } else {
+	int1 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p1.x,p1.y,ast.x,ast.y);
+	int2 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p2.x,p2.y,ast.x,ast.y);
+    }
+    
+    ctx.fillStyle = "#ffff00";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(int1.x,int1.y,3,0,2*pi);
+    ctx.fill();
+    
+    ctx.fillStyle = "#ffff00";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(int2.x,int2.y,3,0,2*pi);
+    ctx.fill();
+    
+    var stroke = int1.online && int2.online ? "#00ffff" : "#ff00ff";
+    ctx.beginPath();
+    ctx.strokeStyle = stroke;
+    ctx.moveTo(p1.x,p1.y);
+    ctx.lineTo(ast.x,ast.y);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.strokeStyle = stroke;
+    ctx.moveTo(p2.x,p2.y);
+    ctx.lineTo(ast.x,ast.y);
+    ctx.stroke();
+
+    var threat_analysis = {};
+    threat_analysis.is_threat = !(int1.online && int2.online);
+    threat_analysis.time_til_impact = (dist_p_to_ast - p_r - ast_r) / v_mag;
+    return(threat_analysis);
 };
 
 player.prototype.respawn = function() {
