@@ -404,42 +404,31 @@ player.prototype.ai = function() {
 	th2.x2 = th1.x1 + 10000*ast.dx;
 	th2.y2 = th1.y1 + 10000*ast.dy;
 
-	var int_11 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p1.x,p1.y,ast.x,ast.y);
-	var int_12 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p2.x,p2.y,ast.x,ast.y);
-	var int_21 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p1.x,p1.y,ast.x,ast.y);
-	var int_22 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p2.x,p2.y,ast.x,ast.y);
+	var dist1 = (th1.x1 - p.x)*(th1.x1 - p.x) + (th1.y1 - p.y)*(th1.y1 - p.y);
+	var dist2 = (th2.x1 - p.x)*(th2.x1 - p.x) + (th2.y1 - p.y)*(th2.y1 - p.y);
+
+	var int1,int2;
+	if (dist1 < dist2) {
+	    int1 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p1.x,p1.y,ast.x,ast.y);
+	    int2 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p2.x,p2.y,ast.x,ast.y);
+	} else {
+	    int1 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p1.x,p1.y,ast.x,ast.y);
+	    int2 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p2.x,p2.y,ast.x,ast.y);
+	}
 
 	ctx.fillStyle = "#ffff00";
 	ctx.lineWidth = 1;
 	ctx.beginPath();
-	ctx.arc(int_11.x,int_11.y,3,0,2*pi);
+	ctx.arc(int1.x,int1.y,3,0,2*pi);
 	ctx.fill();
 
 	ctx.fillStyle = "#ffff00";
 	ctx.lineWidth = 1;
 	ctx.beginPath();
-	ctx.arc(int_21.x,int_21.y,3,0,2*pi);
+	ctx.arc(int2.x,int2.y,3,0,2*pi);
 	ctx.fill();
 
-	ctx.fillStyle = "#ffff00";
-	ctx.lineWidth = 1;
-	ctx.beginPath();
-	ctx.arc(int_12.x,int_12.y,3,0,2*pi);
-	ctx.fill();
-
-	ctx.fillStyle = "#ffff00";
-	ctx.lineWidth = 1;
-	ctx.beginPath();
-	ctx.arc(int_22.x,int_22.y,3,0,2*pi);
-	ctx.fill();
-
-	var log11 = int_11.online ? 1 : 0;
-	var log12 = int_12.online ? 1 : 0;
-	var log21 = int_21.online ? 1 : 0;
-	var log22 = int_22.online ? 1 : 0;
-	var logsum = log11 + log21 + log12 + log22;
-	
-	var stroke = logsum < 1 ? "#ff00ff" : "#00ffff";
+	var stroke = int1.online && int2.online ? "#00ffff" : "#ff00ff";
 	ctx.beginPath();
 	ctx.strokeStyle = stroke;
 	ctx.moveTo(p1.x,p1.y);
