@@ -370,20 +370,37 @@ player.prototype.ai = function() {
 	//This checks if the player is "behind" the asteroid or not. If the player
 	//is "behind" the asteroid, then my logic to check if the player is in the 
 	//threat region of an asteroid won't work.
-	if (!((x_dir === ast_horiz_dir) || (y_dir === ast_verti_dir))) {
-	    ctx.beginPath();
-	    ctx.fillStyle = "#0000ff";
-	    ctx.moveTo(p.x,p.y);
-	    ctx.lineTo(ast.x,ast.y);
-	    ctx.stroke();
-	}
-	    
+	if (((x_dir === ast_horiz_dir) || (y_dir === ast_verti_dir)))
+	    continue;
 	
+	ctx.beginPath();
+	ctx.strokeStyle = "#0000ff";
+	ctx.moveTo(p.x,p.y);
+	ctx.lineTo(ast.x,ast.y);
+	ctx.stroke();
 
-	var a_r = ast.max_r;
 	var p_r = p.max_r;
+	var ast_r = ast.max_r;
 	
-	
+	var dist_p_to_ast = sqrt((p.y - ast.y)*(p.y - ast.y) + (p.x - ast.x)*(p.x - ast.x));
+	var p1 = {}; var p2 = {};
+	p1.x = p.x + (-p_r * (p.y - ast.y)/dist_p_to_ast);
+	p1.y = p.y + (p_r * (p.x - ast.x)/dist_p_to_ast);
+	p2.x = p.x - (-p_r * (p.y - ast.y)/dist_p_to_ast);
+	p2.y = p.y - (p_r * (p.x - ast.x)/dist_p_to_ast);
+
+	ctx.beginPath();
+	ctx.strokeStyle = "#00ffff";
+	ctx.moveTo(p1.x,p1.y);
+	ctx.lineTo(ast.x,ast.y);
+	ctx.stroke();
+
+
+	ctx.beginPath();
+	ctx.strokeStyle = "#00ffff";
+	ctx.moveTo(p2.x,p2.y);
+	ctx.lineTo(ast.x,ast.y);
+	ctx.stroke();
     }
 
     return inputs;
@@ -632,14 +649,6 @@ asteroid.prototype.displayTheta = function (th,color,len) {
     ctx.lineTo(this.x + len*cos(th),this.y + len*sin(th));
     ctx.stroke();
 };
-
-// asteroid.prototype.displayThreat = function() {
-//     ctx.strokeStyle = "#00FF00";
-//     ctx.beginPath();
-//     ctx.moveTo(this.x,this.y);
-//     ctx.lineTo(this.x + 1000*this.dx,this.y + 10000*this.dy);
-//     ctx.stroke();    
-// };
 
 asteroid.prototype.die = function (shot) {
     //console.log("asteroid dead",this.id,shot);
