@@ -388,16 +388,62 @@ player.prototype.ai = function() {
 	    var ind = locationOf(threat_analysis.time_til_impact,threat_times);
 	    threat_times.splice(ind + 1, 0, threat_analysis.time_til_impact);
 	    threats.splice(ind + 1, 0, i);
-	    console.log(threat_analysis.time_til_impact,threats,threat_times);
+	    //console.log(threat_analysis.time_til_impact,threats,threat_times);
 	}
 	else {
-	    //prioritize no-threat asts
+	    targets.push(i);
 	}
     }
 
     //Now that the list of threats has been determined, start to deal with them.
     //Turn the ship to aim at the asteroid and shoot when optimal.
+	
+    //First, check if a shot right now would hit.
+    var ast;
+    if (threats.length > 0)
+	ast = asteroids[threats[0]];
+    else if (targets.length > 0)
+	ast = asteroids[targets[0]];
+    else
+	return inputs;
     
+    //Calc velocity of bullet:
+    var vx;
+    var vy;
+    var speed = sqrt(p.dx*p.dx,p.dy*p.dy);
+    speed = max(5,speed);
+    vx = (speed + 5) * cos(p.theta) + p.dx;
+    vy = (speed + 5) * sin(p.theta) + p.dy;
+    
+    //Check if shot would get within min_r of ast
+    var a = p.x + p.x_adds[0];
+    var b = vx;
+    var c = ast.x;
+    var d = ast.dx;
+    var e = p.y + p.y_adds[0];
+    var f = vy;
+    var g = ast.y;
+    var h = ast.dy;
+    var t_min = (a*(d-b) + b*c - (c*d) - (e*f) + (e*h) + (f*g) - (g*h))/((b*b) - (2*b*d) + (d*d) + (f-h)*(f-h));
+    ctx.fillStyle = "#ff7700";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(a+b*t_min,e+f*t_min,4,0,2*pi);
+    ctx.fill();
+    var x_part = (a + b * t_min - c - d *t_min)*(a + b * t_min - c - d *t_min);
+    var y_part = (e + f * t_min - g - h *t_min)*(e + f * t_min - g - h *t_min);
+    var min_dist = sqrt(x_part + y_part);
+    if (min_dist < ast.min_r)
+	inputs.shoot = true;
+    
+    
+    //Otherwise, find angle between player and asteroid (from player's pov)
+    //and turn towards the asteroid
+    var ang = circConstrain(atan2(ast.y-p.y,ast.x-p.x));
+    if (ang > p.theta)
+	inputs.right = 1;
+    else
+	inputs.left = 1;
     return inputs;
 };
 
