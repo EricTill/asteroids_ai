@@ -376,6 +376,7 @@ player.prototype.ai = function() {
     var threats = []; //asteroids on a collision course
     var threat_times = []; //time til collision for each asteroid on a collision course
     var targets = []; //asteroids just there to shoot
+    var target_angles = []; //Distance from current theta for each non threatening target
 
     for(var i=0; i<asteroids.length; i++) {
 	var ast = asteroids[i];
@@ -391,7 +392,12 @@ player.prototype.ai = function() {
 	    //console.log(threat_analysis.time_til_impact,threats,threat_times);
 	}
 	else {
-	    targets.push(i);
+	    //rank targets by angular distance
+	    var ang = circConstrain(atan2(ast.y-p.y,ast.x-p.x));
+	    var theta_dist = this.theta - ang;
+	    var ind = locationOf(theta_dist,target_angles);
+	    target_angles.splice(ind + 1, 0, theta_dist);
+	    targets.splice(ind + 1, 0, i);
 	}
     }
 
