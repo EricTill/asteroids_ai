@@ -380,6 +380,8 @@ player.prototype.ai = function() {
 	    continue;
 
 	var threat_analysis = this.determineIfThreat(ast);
+	if(this.shot_min_dist(ast) <= ast.min_r)
+	    inputs.shoot = true;
 	if (threat_analysis.is_threat) {
 	    //put in right place in ordered list of threats
 	    var ind = indexInOrderedArray(threat_analysis.time_til_impact,threat_times);
