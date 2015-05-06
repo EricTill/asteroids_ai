@@ -350,17 +350,13 @@ player.prototype.die = function () {
 
 };
 
-function locationOf(element, array, start, end) {
-  start = start || 0;
-  end = end || array.length;
-  var pivot = parseInt(start + (end - start) / 2, 10);
-  if (end-start <= 1 || array[pivot] === element) return pivot;
-  if (array[pivot] < element) {
-    return locationOf(element, array, pivot, end);
-  } else {
-    return locationOf(element, array, start, pivot);
-  }
-}
+var indexInOrderedArray = function(elem,array) {
+    for(var i=0; i<array.length; i++) {
+	if (elem <= array[i])
+	    return i;
+    }
+    return i;
+};
 
 player.prototype.ai = function() {
     //Should return an "inputs" object which emulate keypresses/screen touches.
@@ -386,18 +382,18 @@ player.prototype.ai = function() {
 	var threat_analysis = this.determineIfThreat(ast);
 	if (threat_analysis.is_threat) {
 	    //put in right place in ordered list of threats
-	    var ind = locationOf(threat_analysis.time_til_impact,threat_times);
-	    threat_times.splice(ind + 1, 0, threat_analysis.time_til_impact);
-	    threats.splice(ind + 1, 0, i);
+	    var ind = indexInOrderedArray(threat_analysis.time_til_impact,threat_times);
+	    threat_times.splice(ind, 0, threat_analysis.time_til_impact);
+	    threats.splice(ind, 0, i);
 	    //console.log(threat_analysis.time_til_impact,threats,threat_times);
 	}
 	else {
 	    //rank targets by angular distance
 	    var ang = circConstrain(atan2(ast.y-p.y,ast.x-p.x));
-	    var theta_dist = this.theta - ang;
-	    var ind = locationOf(theta_dist,target_angles);
-	    target_angles.splice(ind + 1, 0, theta_dist);
-	    targets.splice(ind + 1, 0, i);
+	    var theta_dist = circConstrain(abs(this.theta - ang));
+	    var ind = indexInOrderedArray(theta_dist,target_angles);
+	    target_angles.splice(ind, 0, theta_dist);
+	    targets.splice(ind, 0, i);
 	}
     }
 
