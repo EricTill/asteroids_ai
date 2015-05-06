@@ -380,7 +380,7 @@ player.prototype.ai = function() {
 	    continue;
 
 	var threat_analysis = this.determineIfThreat(ast);
-	if(this.shot_min_dist(ast) <= ast.min_r)
+	if(!inputs.shoot && this.shot_min_dist(ast) <= ast.min_r)
 	    inputs.shoot = true;
 	if (threat_analysis.is_threat) {
 	    //put in right place in ordered list of threats
@@ -428,7 +428,7 @@ player.prototype.ai = function() {
 	inputs.left = 1;
     else if (if_turn_right === 1000000 && if_turn_left === 1000000) {
 	var ang = circConstrain(atan2(ast.y-p.y,ast.x-p.x));
-	if (ang > this.theta)
+	if (circConstrain(ang-this.theta) > 0)
 	    inputs.right = 1;
 	else
 	    inputs.left = 1;
