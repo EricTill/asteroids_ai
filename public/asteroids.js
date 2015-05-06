@@ -412,6 +412,7 @@ player.prototype.ai = function() {
     var min_dist = this.shot_min_dist(ast);
     if (min_dist < ast.min_r) {
 	inputs.shoot = true;
+	return inputs;
     }
     
     //Figure out if turning right or left makes the shot better.
