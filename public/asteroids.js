@@ -428,7 +428,7 @@ player.prototype.ai = function() {
 	inputs.left = 1;
     else if (if_turn_right === 1000000 && if_turn_left === 1000000) {
 	var ang = circConstrain(atan2(ast.y-p.y,ast.x-p.x));
-	if (circConstrain(ang-this.theta) > 0)
+	if (circConstrain(ang-this.theta) > pi)
 	    inputs.right = 1;
 	else
 	    inputs.left = 1;
