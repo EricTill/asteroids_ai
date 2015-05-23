@@ -411,8 +411,8 @@ player.prototype.ai = function() {
     else
 	return inputs;
     
-    var min_dist = this.shot_min_dist(ast);
-    if (min_dist < ast.min_r) {
+    var check = this.shot_min_dist(ast);
+    if (check.min_dist < ast.min_r) {
 	inputs.shoot = true;
 	return inputs;
     }
@@ -422,18 +422,17 @@ player.prototype.ai = function() {
     //on the angle between the ship and ast.
     var if_turn_right = this.shot_min_dist(ast,this.max_dtheta);
     var if_turn_left = this.shot_min_dist(ast,-this.max_dtheta);
-    if (if_turn_right < if_turn_left)
-	inputs.right = 1;
-    else if (if_turn_right !== if_turn_left)
-	inputs.left = 1;
-    else if (if_turn_right === 1000000 && if_turn_left === 1000000) {
-	var ang = circConstrain(atan2(ast.y-p.y,ast.x-p.x));
-	if (circConstrain(ang-this.theta) > pi)
-	    inputs.right = 1;
-	else
-	    inputs.left = 1;
+    if (if_turn_right.min_dist < if_turn_left.min_dist && !check.t_neg)
+    	inputs.right = 1;
+    else if (if_turn_right.min_dist >= if_turn_left.min_dist && !check.t_neg)
+    	inputs.left = 1;
+    else if (check.t_neg && if_turn_right.min_dist < if_turn_left.min_dist) {
+    	inputs.left = 1;	
     }
-	
+    else {
+    	inputs.right = 1;
+    }
+
     return inputs;
 };
 
@@ -461,8 +460,6 @@ player.prototype.shot_min_dist = function(ast,theta_correction) {
     var g = ast.y;
     var h = ast.dy;
     var t_min = (a*(d-b) + b*c - (c*d) - (e*f) + (e*h) + (f*g) - (g*h))/((b*b) - (2*b*d) + (d*d) + (f-h)*(f-h));
-    if (t_min < 0)
-	return 1000000;
     ctx.fillStyle = "#ff7700";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -471,7 +468,7 @@ player.prototype.shot_min_dist = function(ast,theta_correction) {
     var x_part = (a + b * t_min - c - d * t_min)*(a + b * t_min - c - d * t_min);
     var y_part = (e + f * t_min - g - h * t_min)*(e + f * t_min - g - h * t_min);
     var min_dist = sqrt(x_part + y_part);
-    return min_dist;
+    return {min_dist: min_dist, t_neg: t_min<0, t_min: t_min};
 };
 
 player.prototype.determineIfThreat = function(ast){
