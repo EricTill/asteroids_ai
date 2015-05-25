@@ -25,7 +25,7 @@ splode1.load();
 splode2.load();
 splode3.load();
 fire.load();
-
+var DEBUG_DRAW = false;
 
 //Alias some mathematics functions/constants
 var pi = Math.PI;
@@ -433,14 +433,14 @@ player.prototype.ai = function() {
     //list - or move on to the next list.
     var ast = false;
     for (var i=0; i<threats.length; i++) {
-	if (asteroid_hits[threats[i]] < this.calc_shots_needed(asteroids[threats[i]])) {
+	if (asteroid_hits[threats[i]] < this.calc_shots_needed(asteroids[threats[i]].r)) {
 	    ast = asteroids[threats[i]];
 	    i=threats.length;
 	}
     }
     if (ast === false) {
 	for (var i=0; i<targets.length; i++) {
-	    if (asteroid_hits[targets[i]] < this.calc_shots_needed(asteroids[targets[i]])) {
+	    if (asteroid_hits[targets[i]] < this.calc_shots_needed(asteroids[targets[i]].r)) {
 		ast = asteroids[targets[i]];
 		i=targets.length;
 	    }
@@ -473,7 +473,7 @@ player.prototype.ai = function() {
     return inputs;
 };
 
-player.prototype.calc_shots_needed = function(ast) {
+player.prototype.calc_shots_needed = function(r) {
     //Should return the estimated maximum shots needed to deal with an asteroid
     //(Based on its size)
     //Spawning code:
@@ -484,10 +484,12 @@ player.prototype.calc_shots_needed = function(ast) {
     //      // where r = max(getUnif(this.r/n,this.r*(n-1)/n),15)
     // 	}
     // }
-
-    if (ast.r < 20)
+    
+    var self = this;
+    if (r < 20)
 	return 1;
-    return 10;
+    var n = 3 + floor(r/40);
+    return 3 + self.calc_shots_needed(r*(n-1)/n);
 };
 
 player.prototype.shot_min_dist = function(ast,theta_correction) {
@@ -514,11 +516,13 @@ player.prototype.shot_min_dist = function(ast,theta_correction) {
     var g = ast.y;
     var h = ast.dy;
     var t_min = (a*(d-b) + b*c - (c*d) - (e*f) + (e*h) + (f*g) - (g*h))/((b*b) - (2*b*d) + (d*d) + (f-h)*(f-h));
-    ctx.fillStyle = "#ff7700";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(a+b*t_min,e+f*t_min,4,0,2*pi);
-    ctx.fill();
+    if (DEBUG_DRAW) {
+	ctx.fillStyle = "#ff7700";
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.arc(a+b*t_min,e+f*t_min,4,0,2*pi);
+	ctx.fill();
+    }
     var x_part = (a + b * t_min - c - d * t_min)*(a + b * t_min - c - d * t_min);
     var y_part = (e + f * t_min - g - h * t_min)*(e + f * t_min - g - h * t_min);
     var min_dist = sqrt(x_part + y_part);
@@ -541,11 +545,13 @@ player.prototype.determineIfThreat = function(ast){
     //NOTE: Currently, this doesn't seem to be working perfectly! It's all brobis'd up
     if (((x_dir === ast_horiz_dir) || (y_dir === ast_verti_dir)))
 	return(false);
-    ctx.beginPath();
-    ctx.strokeStyle = "#0000ff";
-    ctx.moveTo(p.x,p.y);
-    ctx.lineTo(ast.x,ast.y);
-    ctx.stroke();
+    if (DEBUG_DRAW) {
+	ctx.beginPath();
+	ctx.strokeStyle = "#0000ff";
+	ctx.moveTo(p.x,p.y);
+	ctx.lineTo(ast.x,ast.y);
+	ctx.stroke();
+    }
     
     var dist_p_to_ast = sqrt((p.y - ast.y)*(p.y - ast.y) + (p.x - ast.x)*(p.x - ast.x));
     var p1 = {}; var p2 = {};
@@ -578,30 +584,32 @@ player.prototype.determineIfThreat = function(ast){
 	int2 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p2.x,p2.y,ast.x,ast.y);
     }
     
-    ctx.fillStyle = "#ffff00";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(int1.x,int1.y,3,0,2*pi);
-    ctx.fill();
+    if (DEBUG_DRAW) {
+	ctx.fillStyle = "#ffff00";
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.arc(int1.x,int1.y,3,0,2*pi);
+	ctx.fill();
+	
+	ctx.fillStyle = "#ffff00";
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.arc(int2.x,int2.y,3,0,2*pi);
+	ctx.fill();
     
-    ctx.fillStyle = "#ffff00";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(int2.x,int2.y,3,0,2*pi);
-    ctx.fill();
-    
-    var stroke = int1.online && int2.online ? "#00ffff" : "#ff00ff";
-    ctx.beginPath();
-    ctx.strokeStyle = stroke;
-    ctx.moveTo(p1.x,p1.y);
-    ctx.lineTo(ast.x,ast.y);
-    ctx.stroke();
-    
-    ctx.beginPath();
-    ctx.strokeStyle = stroke;
-    ctx.moveTo(p2.x,p2.y);
-    ctx.lineTo(ast.x,ast.y);
-    ctx.stroke();
+	var stroke = int1.online && int2.online ? "#00ffff" : "#ff00ff";
+	ctx.beginPath();
+	ctx.strokeStyle = stroke;
+	ctx.moveTo(p1.x,p1.y);
+	ctx.lineTo(ast.x,ast.y);
+	ctx.stroke();
+	
+	ctx.beginPath();
+	ctx.strokeStyle = stroke;
+	ctx.moveTo(p2.x,p2.y);
+	ctx.lineTo(ast.x,ast.y);
+	ctx.stroke();
+    }
 
     var threat_analysis = {};
     threat_analysis.is_threat = !(int1.online && int2.online);
@@ -649,11 +657,13 @@ bullet.prototype.min_dist = function(ast) {
     var g = ast.y;
     var h = ast.dy;
     var t_min = (a*(d-b) + b*c - (c*d) - (e*f) + (e*h) + (f*g) - (g*h))/((b*b) - (2*b*d) + (d*d) + (f-h)*(f-h));
-    ctx.fillStyle = "#ff0077";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(a+b*t_min,e+f*t_min,4,0,2*pi);
-    ctx.fill();
+    if (DEBUG_DRAW) {
+	ctx.fillStyle = "#ff0077";
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.arc(a+b*t_min,e+f*t_min,4,0,2*pi);
+	ctx.fill();
+    }
     var x_part = (a + b * t_min - c - d * t_min)*(a + b * t_min - c - d * t_min);
     var y_part = (e + f * t_min - g - h * t_min)*(e + f * t_min - g - h * t_min);
     var min_dist = sqrt(x_part + y_part);
@@ -781,14 +791,14 @@ asteroid.prototype.displayThreat = function() {
     ctx.strokeStyle="#00FF00";
     ctx.lineWidth = 1;
     var v_mag = sqrt(this.dx*this.dx + this.dy*this.dy);
-
+    
     ctx.beginPath();
     var x1 = this.x + (-this.max_r * (this.dy/v_mag));
     var y1 = this.y + (this.max_r * (this.dx/v_mag));
     ctx.moveTo(x1,y1);
     ctx.lineTo(x1 + 10000*this.dx,y1 + 10000*this.dy);
     ctx.stroke();
-
+    
     ctx.beginPath();
     var x2 = this.x - (-this.max_r * (this.dy/v_mag));
     var y2 = this.y - (this.max_r * (this.dx/v_mag));
@@ -799,43 +809,45 @@ asteroid.prototype.displayThreat = function() {
 
 //Asteroid draw function
 asteroid.prototype.draw = function () {
-	//asteroid is in the middle of a death animation
-    //this.displayVeloc();
-    this.displayThreat();
-	if(this.death_timer > 0) {
-	    var x1,x2,y1,y2,tmp_x1,tmp_x2,tmp_y1,tmp_y2,prc;
-	    prc = ((this.death_anim_time-this.death_timer+1)/this.death_anim_time);
-	    ctx.strokeStyle="rgba(255,255,255,"+prc+")";
-	    for(var i = 0; i<this.x_adds_midpoints.length; i++) {
-
-		//Update death angles
-		this.death_thetas[i] = circConstrain(this.death_thetas[i] + this.death_rotation_speeds[i]);
-		
-		//Shift relative to midpoint for rotation
-		tmp_x1 = (this.x_adds[i] - this.x_adds_midpoints[i]);
-		tmp_x2 = (this.x_adds[i+1] - this.x_adds_midpoints[i]);
-		tmp_y1 = (this.y_adds[i] - this.y_adds_midpoints[i]);
-		tmp_y2 = (this.y_adds[i+1] - this.y_adds_midpoints[i]);
-
-		//apply rotation matrix
-		x1 = tmp_x1 * cos(this.death_thetas[i]) - tmp_y1 * sin(this.death_thetas[i]);
-		x2 = tmp_x2 * cos(this.death_thetas[i]) - tmp_y2 * sin(this.death_thetas[i]);
-		y1 = tmp_x1 * sin(this.death_thetas[i]) + tmp_y1 * cos(this.death_thetas[i]);
-		y2 = tmp_x2 * sin(this.death_thetas[i]) + tmp_y2 * cos(this.death_thetas[i]);
-
-		//Shift back relative to midpoints
-		x1 = (x1 + this.x_adds_midpoints[i] + (1 - prc) * this.x_death_drifts[i]);
-		x2 = (x2 + this.x_adds_midpoints[i] + (1 - prc) * this.x_death_drifts[i]);
-		y1 = (y1 + this.y_adds_midpoints[i] + (1 - prc) * this.y_death_drifts[i]);
-		y2 = (y2 + this.y_adds_midpoints[i] + (1 - prc) * this.y_death_drifts[i]);
-
-		//Draw line
-		ctx.beginPath();
-		ctx.moveTo(x1 + this.x, y1 + this.y);
-		ctx.lineTo(x2 + this.x, y2 + this.y);
-		ctx.stroke();
-	    }
+    //asteroid is in the middle of a death animation
+    if (DEBUG_DRAW) {
+	//this.displayVeloc();
+	this.displayThreat();
+    }
+    if(this.death_timer > 0) {
+	var x1,x2,y1,y2,tmp_x1,tmp_x2,tmp_y1,tmp_y2,prc;
+	prc = ((this.death_anim_time-this.death_timer+1)/this.death_anim_time);
+	ctx.strokeStyle="rgba(255,255,255,"+prc+")";
+	for(var i = 0; i<this.x_adds_midpoints.length; i++) {
+	    
+	    //Update death angles
+	    this.death_thetas[i] = circConstrain(this.death_thetas[i] + this.death_rotation_speeds[i]);
+	    
+	    //Shift relative to midpoint for rotation
+	    tmp_x1 = (this.x_adds[i] - this.x_adds_midpoints[i]);
+	    tmp_x2 = (this.x_adds[i+1] - this.x_adds_midpoints[i]);
+	    tmp_y1 = (this.y_adds[i] - this.y_adds_midpoints[i]);
+	    tmp_y2 = (this.y_adds[i+1] - this.y_adds_midpoints[i]);
+	    
+	    //apply rotation matrix
+	    x1 = tmp_x1 * cos(this.death_thetas[i]) - tmp_y1 * sin(this.death_thetas[i]);
+	    x2 = tmp_x2 * cos(this.death_thetas[i]) - tmp_y2 * sin(this.death_thetas[i]);
+	    y1 = tmp_x1 * sin(this.death_thetas[i]) + tmp_y1 * cos(this.death_thetas[i]);
+	    y2 = tmp_x2 * sin(this.death_thetas[i]) + tmp_y2 * cos(this.death_thetas[i]);
+	    
+	    //Shift back relative to midpoints
+	    x1 = (x1 + this.x_adds_midpoints[i] + (1 - prc) * this.x_death_drifts[i]);
+	    x2 = (x2 + this.x_adds_midpoints[i] + (1 - prc) * this.x_death_drifts[i]);
+	    y1 = (y1 + this.y_adds_midpoints[i] + (1 - prc) * this.y_death_drifts[i]);
+	    y2 = (y2 + this.y_adds_midpoints[i] + (1 - prc) * this.y_death_drifts[i]);
+	    
+	    //Draw line
+	    ctx.beginPath();
+	    ctx.moveTo(x1 + this.x, y1 + this.y);
+	    ctx.lineTo(x2 + this.x, y2 + this.y);
+	    ctx.stroke();
 	}
+    }
     
     else {
 	ctx.strokeStyle = "#ffffff";
