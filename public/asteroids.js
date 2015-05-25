@@ -366,6 +366,33 @@ player.prototype.ai = function() {
     inputs.right = 0;
     inputs.shoot = false;
 
+    //Accounting - figure out which asteroid each bullet will hit first
+
+    //Array of length(asteroids) with an int representing how many bullets are on a collision course with that ast
+    var asteroid_hits = new Array(asteroids.length); 
+    for(var i=0; i<asteroid_hits.length; i++){asteroid_hits[i]=0;} //initialize to 0
+    for (var i=0; i<bullets.length; i++) {
+	var bul = bullets[i];
+	if (bul === null)
+	    continue;
+	
+	var min_t = false;
+	var ast_ind = false;
+	for(var k=0; k<asteroids.length; k++) {
+	    var ast = asteroids[k];
+	    if (ast === null || ast.death_timer > 0)
+		continue;
+
+	    var temp_t = bul.min_dist(ast);
+	    if (temp_t !== false && (min_t === false || temp_t < min_t)) {
+		ast_ind = k;
+		min_t = temp_t;
+	    }
+	}
+	if (ast_ind !== false)
+	    asteroid_hits[ast_ind]++;
+    }
+
     //Need to decide what to aim at. Rank asteroids in order of their threat.
     //Asteroids on a collision course obviously get the highest ranking.
     //Asteroids not on a collision course are ranked somehow and gotten to if there are no current threats
@@ -402,15 +429,25 @@ player.prototype.ai = function() {
     //Now that the list of threats has been determined, start to deal with them.
     //Turn the ship to aim at the asteroid and shoot when optimal.
 	
-    //First, check if a shot right now would hit.
-    var ast;
-    if (threats.length > 0)
-	ast = asteroids[threats[0]];
-    else if (targets.length > 0)
-	ast = asteroids[targets[0]];
-    else
-	return inputs;
+    //Check if there are already enough bullets heading towards this ast. If so, move down the
+    //list - or move on to the next list.
+    var ast = false;
+    for (var i=0; i<threats.length; i++) {
+	if (asteroid_hits[threats[i]] < this.calc_shots_needed(asteroids[threats[i]])) {
+	    ast = asteroids[threats[i]];
+	    i=threats.length;
+	}
+    }
+    if (ast === false) {
+	for (var i=0; i<targets.length; i++) {
+	    if (asteroid_hits[targets[i]] < this.calc_shots_needed(asteroids[targets[i]])) {
+		ast = asteroids[targets[i]];
+		i=targets.length;
+	    }
+	}
+    }
     
+    //First, check if a shot right now would hit.
     var check = this.shot_min_dist(ast);
     if (check.min_dist < ast.min_r) {
 	inputs.shoot = true;
@@ -434,6 +471,23 @@ player.prototype.ai = function() {
     }
 
     return inputs;
+};
+
+player.prototype.calc_shots_needed = function(ast) {
+    //Should return the estimated maximum shots needed to deal with an asteroid
+    //(Based on its size)
+    //Spawning code:
+    // if (this.r >= 20) {
+    // 	var n = getRandInt(2,3) + floor(this.r/40);
+    // 	for(var i = 0; i < n; i++) {
+    // 	    //spawnAsteroid(stuff);
+    //      // where r = max(getUnif(this.r/n,this.r*(n-1)/n),15)
+    // 	}
+    // }
+
+    if (ast.r < 20)
+	return 1;
+    return 10;
 };
 
 player.prototype.shot_min_dist = function(ast,theta_correction) {
@@ -575,6 +629,39 @@ function bullet(x,y,r,dx,dy,id) {
     this.id = id;
     this.crossings = 0;
 }
+
+bullet.prototype.min_dist = function(ast) {
+    //Returns the time at which the minimum distance between
+    //the bullet and asteroid will reach their minimum distance
+    //IF that minimum dist is less than the minimum ast radius.
+    //Otherwise, return false
+
+    var vx = this.dx;
+    var vy = this.dy;
+    
+    //Check if shot would get within min_r of ast
+    var a = this.x;
+    var b = vx;
+    var c = ast.x;
+    var d = ast.dx;
+    var e = this.y;
+    var f = vy;
+    var g = ast.y;
+    var h = ast.dy;
+    var t_min = (a*(d-b) + b*c - (c*d) - (e*f) + (e*h) + (f*g) - (g*h))/((b*b) - (2*b*d) + (d*d) + (f-h)*(f-h));
+    ctx.fillStyle = "#ff0077";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(a+b*t_min,e+f*t_min,4,0,2*pi);
+    ctx.fill();
+    var x_part = (a + b * t_min - c - d * t_min)*(a + b * t_min - c - d * t_min);
+    var y_part = (e + f * t_min - g - h * t_min)*(e + f * t_min - g - h * t_min);
+    var min_dist = sqrt(x_part + y_part);
+    if (t_min < 0 || min_dist > ast.min_r)
+	return false;
+    else
+	return t_min;
+};
 
 bullet.prototype.updatePosition = function() {
     this.x += this.dx;
