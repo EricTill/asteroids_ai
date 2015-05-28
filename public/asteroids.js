@@ -545,89 +545,37 @@ player.prototype.shot_min_dist = function(ast,theta_correction) {
 };
 
 player.prototype.determineIfThreat = function(ast){
-    var p_r = p.max_r;
+    var p_r = this.max_r;
     var ast_r = ast.max_r;
     
-    var x_dir = ast.dx > 0 ? 1 : -1;
-    var y_dir = ast.dy > 0 ? 1 : -1;
-    var ast_horiz_dir = ast.x - ast_r > p.x + p_r ? 1 : -1;
-    var ast_verti_dir = ast.y - ast_r > p.y + p_r ? 1 : -1;
-    //This checks if the player is "behind" the asteroid or not. If the player
-    //is "behind" the asteroid, then my logic to check if the player is in the 
-    //threat region of an asteroid won't work.
-    
-    
-    //NOTE: Currently, this doesn't seem to be working perfectly! It's all brobis'd up
-    if (((x_dir === ast_horiz_dir) || (y_dir === ast_verti_dir)))
-	return(false);
+    //Check if shot would get within min_r of ast
+    var a = this.x;
+    var b = this.dx;
+    var c = ast.x;
+    var d = ast.dx;
+    var e = this.y;
+    var f = this.dy;
+    var g = ast.y;
+    var h = ast.dy;
+    var t_min = (a*(d-b) + b*c - (c*d) - (e*f) + (e*h) + (f*g) - (g*h))/((b*b) - (2*b*d) + (d*d) + (f-h)*(f-h));
+    var x_part = (a + b * t_min - c - d * t_min)*(a + b * t_min - c - d * t_min);
+    var y_part = (e + f * t_min - g - h * t_min)*(e + f * t_min - g - h * t_min);
+    var min_dist = sqrt(x_part + y_part);
+    var will_hit = (min_dist - p_r - ast_r < 0) && t_min > 0;
+
     if (DEBUG_DRAW) {
-	ctx.beginPath();
-	ctx.strokeStyle = "#0000ff";
-	ctx.moveTo(p.x,p.y);
-	ctx.lineTo(ast.x,ast.y);
-	ctx.stroke();
-    }
-    
-    var dist_p_to_ast = sqrt((p.y - ast.y)*(p.y - ast.y) + (p.x - ast.x)*(p.x - ast.x));
-    var p1 = {}; var p2 = {};
-    p1.x = p.x + (-p_r * (p.y - ast.y)/dist_p_to_ast);
-    p1.y = p.y + (p_r * (p.x - ast.x)/dist_p_to_ast);
-    p2.x = p.x - (-p_r * (p.y - ast.y)/dist_p_to_ast);
-    p2.y = p.y - (p_r * (p.x - ast.x)/dist_p_to_ast);
-    
-    var th1 = {}; var th2 = {};
-    var v_mag = sqrt(ast.dx*ast.dx + ast.dy*ast.dy);
-    th1.x1 = ast.x - (ast.max_r * (ast.dy/v_mag)) - (this.max_r * this.dx/v_mag);
-    th1.y1 = ast.y + (ast.max_r * (ast.dx/v_mag)) - (this.max_r * this.dy/v_mag);
-    th1.x2 = th1.x1 + 10000*ast.dx;
-    th1.y2 = th1.y1 + 10000*ast.dy;
-    
-    th2.x1 = ast.x + (ast.max_r * (ast.dy/v_mag)) - (this.max_r * this.dx/v_mag);
-    th2.y1 = ast.y - (ast.max_r * (ast.dx/v_mag)) - (this.max_r * this.dy/v_mag);
-    th2.x2 = th2.x1 + 10000*ast.dx;
-    th2.y2 = th2.y1 + 10000*ast.dy;
-    
-    var dist1 = (th1.x1 - p.x)*(th1.x1 - p.x) + (th1.y1 - p.y)*(th1.y1 - p.y);
-    var dist2 = (th2.x1 - p.x)*(th2.x1 - p.x) + (th2.y1 - p.y)*(th2.y1 - p.y);
-    
-    var int1,int2;
-    if (dist1 < dist2) {
-	int1 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p1.x,p1.y,ast.x,ast.y);
-	int2 = getIntersectionLines(th1.x1,th1.y1,th1.x2,th1.y2,p2.x,p2.y,ast.x,ast.y);
-    } else {
-	int1 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p1.x,p1.y,ast.x,ast.y);
-	int2 = getIntersectionLines(th2.x1,th2.y1,th2.x2,th2.y2,p2.x,p2.y,ast.x,ast.y);
-    }
-    
-    if (DEBUG_DRAW) {
-	ctx.fillStyle = "#ffff00";
-	ctx.lineWidth = 1;
-	ctx.beginPath();
-	ctx.arc(int1.x,int1.y,3,0,2*pi);
-	ctx.fill();
-	
-	ctx.fillStyle = "#ffff00";
-	ctx.lineWidth = 1;
-	ctx.beginPath();
-	ctx.arc(int2.x,int2.y,3,0,2*pi);
-	ctx.fill();
-    
-	var stroke = int1.online && int2.online ? "#00ffff" : "#ff00ff";
+	var stroke = will_hit ? "#ff00ff" : "#00ffff";
 	ctx.beginPath();
 	ctx.strokeStyle = stroke;
-	ctx.moveTo(p1.x,p1.y);
-	ctx.lineTo(ast.x,ast.y);
-	ctx.stroke();
-	
-	ctx.beginPath();
-	ctx.strokeStyle = stroke;
-	ctx.moveTo(p2.x,p2.y);
+	ctx.moveTo(this.x,this.y);
 	ctx.lineTo(ast.x,ast.y);
 	ctx.stroke();
     }
 
     var threat_analysis = {};
-    threat_analysis.is_threat = !(int1.online && int2.online);
+    threat_analysis.is_threat = will_hit;
+    var dist_p_to_ast = sqrt((this.y - ast.y)*(this.y - ast.y) + (this.x - ast.x)*(this.x - ast.x));
+    var v_mag = sqrt(ast.dx*ast.dx + ast.dy*ast.dy);
     threat_analysis.time_til_impact = (dist_p_to_ast - p_r - ast_r) / v_mag;
     return(threat_analysis);
 };
