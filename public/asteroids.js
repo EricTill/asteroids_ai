@@ -11,21 +11,21 @@ var muted = true;
 var mute_lock = false;
 var mobile = false;
 //var thrust  = new Audio();
-var splode1 = new Audio();
-var splode2 = new Audio();
-var splode3 = new Audio();
-var fire    = new Audio();
-//thrust.src = 'sound_effects/thrust_fade.wav';
-splode1.src = 'sound_effects/explode1.wav';
-splode2.src = 'sound_effects/explode2.wav';
-splode3.src = 'sound_effects/explode3.wav';
-fire.src = 'sound_effects/fire.wav';
+// var splode1 = new Audio();
+// var splode2 = new Audio();
+// var splode3 = new Audio();
+// var fire    = new Audio();
+// thrust.src = 'sound_effects/thrust_fade.wav';
+// splode1.src = 'sound_effects/explode1.wav';
+// splode2.src = 'sound_effects/explode2.wav';
+// splode3.src = 'sound_effects/explode3.wav';
+// fire.src = 'sound_effects/fire.wav';
 //thrust.load();
-splode1.load();
-splode2.load();
-splode3.load();
-fire.load();
-var DEBUG_DRAW = false;
+// splode1.load();
+// splode2.load();
+// splode3.load();
+// fire.load();
+var DEBUG_DRAW = true;
 
 //Alias some mathematics functions/constants
 var pi = Math.PI;
@@ -384,7 +384,7 @@ player.prototype.ai = function() {
 		continue;
 
 	    var temp_t = bul.min_dist(ast);
-	    if (temp_t !== false && (min_t === false || temp_t < min_t)) {
+	    if (asteroid_hits[k] >= this.calc_shots_needed(ast.r) || temp_t !== false && (min_t === false || temp_t < min_t)) {
 		ast_ind = k;
 		min_t = temp_t;
 	    }
@@ -405,6 +405,11 @@ player.prototype.ai = function() {
 	var ast = asteroids[i];
 	if (ast === null || ast.death_timer > 0)
 	    continue;
+
+	//Check if a shot right now would hit.
+	var check = this.shot_min_dist(ast);
+	if (check.min_dist < ast.min_r)
+	    inputs.shoot = true;
 
 	var threat_analysis = this.determineIfThreat(ast);
 	if(!inputs.shoot && this.shot_min_dist(ast) <= ast.min_r)
@@ -447,27 +452,23 @@ player.prototype.ai = function() {
 	}
     }
     
-    //First, check if a shot right now would hit.
-    var check = this.shot_min_dist(ast);
-    if (check.min_dist < ast.min_r) {
-	inputs.shoot = true;
-	return inputs;
-    }
-    
     //Figure out if turning right or left makes the shot better.
     //If both seem to suck, try turning towards it manually based
     //on the angle between the ship and ast.
-    var if_turn_right = this.shot_min_dist(ast,this.max_dtheta);
-    var if_turn_left = this.shot_min_dist(ast,-this.max_dtheta);
-    if (if_turn_right.min_dist < if_turn_left.min_dist && !check.t_neg)
-    	inputs.right = 1;
-    else if (if_turn_right.min_dist >= if_turn_left.min_dist && !check.t_neg)
-    	inputs.left = 1;
-    else if (check.t_neg && if_turn_right.min_dist < if_turn_left.min_dist) {
-    	inputs.left = 1;	
-    }
-    else {
-    	inputs.right = 1;
+    var check = this.shot_min_dist(ast);
+    if (ast !== false && check.min_dist > ast.min_r) {
+	var if_turn_right = this.shot_min_dist(ast,this.max_dtheta);
+	var if_turn_left = this.shot_min_dist(ast,-this.max_dtheta);
+	if (if_turn_right.min_dist < if_turn_left.min_dist && !check.t_neg)
+    	    inputs.right = 1;
+	else if (if_turn_right.min_dist >= if_turn_left.min_dist && !check.t_neg)
+    	    inputs.left = 1;
+	else if (check.t_neg && if_turn_right.min_dist < if_turn_left.min_dist) {
+    	    inputs.left = 1;	
+	}
+	else {
+    	    inputs.right = 1;
+	}
     }
 
     return inputs;
@@ -535,8 +536,8 @@ player.prototype.determineIfThreat = function(ast){
     
     var x_dir = ast.dx > 0 ? 1 : -1;
     var y_dir = ast.dy > 0 ? 1 : -1;
-    var ast_horiz_dir = ast.x > p.x ? 1 : -1;
-    var ast_verti_dir = ast.y > p.y ? 1 : -1;
+    var ast_horiz_dir = ast.x - ast_r > p.x + p_r ? 1 : -1;
+    var ast_verti_dir = ast.y - ast_r > p.y + p_r ? 1 : -1;
     //This checks if the player is "behind" the asteroid or not. If the player
     //is "behind" the asteroid, then my logic to check if the player is in the 
     //threat region of an asteroid won't work.
@@ -562,15 +563,15 @@ player.prototype.determineIfThreat = function(ast){
     
     var th1 = {}; var th2 = {};
     var v_mag = sqrt(ast.dx*ast.dx + ast.dy*ast.dy);
-    th1.x1 = ast.x + (-ast.max_r * (ast.dy/v_mag));
-    th1.y1 = ast.y + (ast.max_r * (ast.dx/v_mag));
+    th1.x1 = ast.x - (ast.max_r * (ast.dy/v_mag)) - (this.max_r * this.dx/v_mag);
+    th1.y1 = ast.y + (ast.max_r * (ast.dx/v_mag)) - (this.max_r * this.dy/v_mag);
     th1.x2 = th1.x1 + 10000*ast.dx;
     th1.y2 = th1.y1 + 10000*ast.dy;
     
-    th2.x1 = ast.x - (-ast.max_r * (ast.dy/v_mag));
-    th2.y1 = ast.y - (ast.max_r * (ast.dx/v_mag));
-    th2.x2 = th1.x1 + 10000*ast.dx;
-    th2.y2 = th1.y1 + 10000*ast.dy;
+    th2.x1 = ast.x + (ast.max_r * (ast.dy/v_mag)) - (this.max_r * this.dx/v_mag);
+    th2.y1 = ast.y - (ast.max_r * (ast.dx/v_mag)) - (this.max_r * this.dy/v_mag);
+    th2.x2 = th2.x1 + 10000*ast.dx;
+    th2.y2 = th2.y1 + 10000*ast.dy;
     
     var dist1 = (th1.x1 - p.x)*(th1.x1 - p.x) + (th1.y1 - p.y)*(th1.y1 - p.y);
     var dist2 = (th2.x1 - p.x)*(th2.x1 - p.x) + (th2.y1 - p.y)*(th2.y1 - p.y);
@@ -657,13 +658,13 @@ bullet.prototype.min_dist = function(ast) {
     var g = ast.y;
     var h = ast.dy;
     var t_min = (a*(d-b) + b*c - (c*d) - (e*f) + (e*h) + (f*g) - (g*h))/((b*b) - (2*b*d) + (d*d) + (f-h)*(f-h));
-    if (DEBUG_DRAW) {
-	ctx.fillStyle = "#ff0077";
-	ctx.lineWidth = 1;
-	ctx.beginPath();
-	ctx.arc(a+b*t_min,e+f*t_min,4,0,2*pi);
-	ctx.fill();
-    }
+    // if (DEBUG_DRAW) {
+    // 	ctx.fillStyle = "#ff0077";
+    // 	ctx.lineWidth = 1;
+    // 	ctx.beginPath();
+    // 	ctx.arc(a+b*t_min,e+f*t_min,4,0,2*pi);
+    // 	ctx.fill();
+    // }
     var x_part = (a + b * t_min - c - d * t_min)*(a + b * t_min - c - d * t_min);
     var y_part = (e + f * t_min - g - h * t_min)*(e + f * t_min - g - h * t_min);
     var min_dist = sqrt(x_part + y_part);
@@ -793,15 +794,15 @@ asteroid.prototype.displayThreat = function() {
     var v_mag = sqrt(this.dx*this.dx + this.dy*this.dy);
     
     ctx.beginPath();
-    var x1 = this.x + (-this.max_r * (this.dy/v_mag));
-    var y1 = this.y + (this.max_r * (this.dx/v_mag));
+    var x1 = this.x - (this.max_r * (this.dy/v_mag)) - (this.max_r * this.dx/v_mag);
+    var y1 = this.y + (this.max_r * (this.dx/v_mag)) - (this.max_r * this.dy/v_mag);
     ctx.moveTo(x1,y1);
     ctx.lineTo(x1 + 10000*this.dx,y1 + 10000*this.dy);
     ctx.stroke();
     
     ctx.beginPath();
-    var x2 = this.x - (-this.max_r * (this.dy/v_mag));
-    var y2 = this.y - (this.max_r * (this.dx/v_mag));
+    var x2 = this.x + (this.max_r * (this.dy/v_mag)) - (this.max_r * this.dx/v_mag);
+    var y2 = this.y - (this.max_r * (this.dx/v_mag)) - (this.max_r * this.dy/v_mag);
     ctx.moveTo(x2,y2);
     ctx.lineTo(x2 + 10000*this.dx,y2 + 10000*this.dy);
     ctx.stroke();
