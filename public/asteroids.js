@@ -25,7 +25,7 @@ var mobile = false;
 // splode2.load();
 // splode3.load();
 // fire.load();
-var DEBUG_DRAW = true;
+var DEBUG_DRAW = false;
 
 //Alias some mathematics functions/constants
 var pi = Math.PI;
@@ -126,6 +126,7 @@ function player(x,y) {
 	this.x_death_drifts.push(0);
 	this.y_death_drifts.push(0);
     }
+    this.frames_since_last_shot = 0;
 }
 
 player.prototype.move = function(accel,theta_dir) {
@@ -291,23 +292,26 @@ player.prototype.displayTheta = function (th,color) {
 };
 
 player.prototype.shoot = function() {
-    var vx;
-    var vy;
-    var speed = sqrt(this.dx*this.dx,this.dy*this.dy);
-    speed = max(5,speed);
-    vx = (speed + 5) * cos(this.theta) + this.dx;
-    vy = (speed + 5) * sin(this.theta) + this.dy;
-    
-    if(null_buls.length > 0) {
-	var curr_id = null_buls.pop();
-	bullets[curr_id] = new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,curr_id);
-    }
-    else {
-	bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,bullets.length));
-    }
-
-    if (!muted) {
-	new Audio('sound_effects/fire.wav').play();
+    if (this.frames_since_last_shot >= frames_between_shots) {
+	this.frames_since_last_shot = 0;
+	var vx;
+	var vy;
+	var speed = sqrt(this.dx*this.dx,this.dy*this.dy);
+	speed = max(5,speed);
+	vx = (speed + 5) * cos(this.theta) + this.dx;
+	vy = (speed + 5) * sin(this.theta) + this.dy;
+	
+	if(null_buls.length > 0) {
+	    var curr_id = null_buls.pop();
+	    bullets[curr_id] = new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,curr_id);
+	}
+	else {
+	    bullets.push(new bullet(this.x+this.x_adds[0],this.y+this.y_adds[0],1.5,vx,vy,bullets.length));
+	}
+	
+	if (!muted) {
+	    new Audio('sound_effects/fire.wav').play();
+	}
     }
 
 };
@@ -564,12 +568,14 @@ player.prototype.determineIfThreat = function(ast){
     var will_hit = (min_dist - p_r - ast_r < 0) && t_min > 0;
 
     if (DEBUG_DRAW) {
-	var stroke = will_hit ? "#ff00ff" : "#00ffff";
-	ctx.beginPath();
-	ctx.strokeStyle = stroke;
-	ctx.moveTo(this.x,this.y);
-	ctx.lineTo(ast.x,ast.y);
-	ctx.stroke();
+	if (will_hit) {
+	    var stroke = "#ff00ff";
+	    ctx.beginPath();
+	    ctx.strokeStyle = stroke;
+	    ctx.moveTo(this.x,this.y);
+	    ctx.lineTo(ast.x,ast.y);
+	    ctx.stroke();
+	}
     }
 
     var threat_analysis = {};
@@ -1027,6 +1033,7 @@ var down;
 var left;
 var right;
 var shoot_lock = false;
+var frames_between_shots = 8;
 var frame = 0;
 //var dtheta = (2*pi/(60*1.6)); //measured in sections needed to turn the ship 360 degrees
 getSetStageSize(1, 1);
@@ -1059,7 +1066,7 @@ var updateGameState = function () {
 	if(p.death_timer <= 0) {
     	    getControlInputs();
     	}
-
+	p.frames_since_last_shot++;
     	p.updatePosition();
     	p.draw();
     	
