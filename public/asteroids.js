@@ -366,32 +366,7 @@ player.prototype.ai = function() {
     inputs.right = 0;
     inputs.shoot = false;
 
-    //Accounting - figure out which asteroid each bullet will hit first
-
-    //Array of length(asteroids) with an int representing how many bullets are on a collision course with that ast
-    var asteroid_hits = new Array(asteroids.length); 
-    for(var i=0; i<asteroid_hits.length; i++){asteroid_hits[i]=0;} //initialize to 0
-    for (var i=0; i<bullets.length; i++) {
-	var bul = bullets[i];
-	if (bul === null)
-	    continue;
-	
-	var min_t = false;
-	var ast_ind = false;
-	for(var k=0; k<asteroids.length; k++) {
-	    var ast = asteroids[k];
-	    if (ast === null || ast.death_timer > 0)
-		continue;
-
-	    var temp_t = bul.min_dist(ast);
-	    if (asteroid_hits[k] >= this.calc_shots_needed(ast.r) || temp_t !== false && (min_t === false || temp_t < min_t)) {
-		ast_ind = k;
-		min_t = temp_t;
-	    }
-	}
-	if (ast_ind !== false)
-	    asteroid_hits[ast_ind]++;
-    }
+    
 
     //Need to decide what to aim at. Rank asteroids in order of their threat.
     //Asteroids on a collision course obviously get the highest ranking.
@@ -430,6 +405,45 @@ player.prototype.ai = function() {
 	    targets.splice(ind, 0, i);
 	}
     }
+
+    //Accounting - figure out which asteroid each bullet will hit first
+
+    //Array of length(asteroids) with an int representing how many bullets are on a collision course with that ast
+    //Asteroids on a collision course with the player need special treatment because it's not good enough that a bullet
+    //will hit them at some point. That bullet needs to hit them before that asteroid hits the player!
+    var asteroid_hits = new Array(asteroids.length); 
+    for(var i=0; i<asteroid_hits.length; i++){asteroid_hits[i]=0;} //initialize to 0
+    for (var i=0; i<bullets.length; i++) {
+	var bul = bullets[i];
+	if (bul === null)
+	    continue;
+	
+	var min_t = false;
+	var ast_ind = false;
+	for(var k=0; k<asteroids.length; k++) {
+	    var ast = asteroids[k];
+	    if (ast === null || ast.death_timer > 0)
+		continue;
+
+	    var temp_t = bul.min_dist(ast);
+	    if (asteroid_hits[k] >= this.calc_shots_needed(ast.r) || temp_t !== false && (min_t === false || temp_t < min_t)) {
+		ast_ind = k;
+		min_t = temp_t;
+	    }
+	}
+	if (ast_ind !== false) {
+	    var threat_ind = threats.indexOf(ast_ind);
+	    if ( threat_ind> -1) { //ast is on threats list
+		if (temp_t < threat_times[threat_ind])
+		    asteroid_hits[ast_ind]++;
+		//else, this asteroid is going to hit the player first, so it shouldn't be treated as safe
+	    }
+	    else {
+		asteroid_hits[ast_ind]++;
+	    }
+	}
+    }
+
 
     //Now that the list of threats has been determined, start to deal with them.
     //Turn the ship to aim at the asteroid and shoot when optimal.
