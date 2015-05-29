@@ -370,8 +370,6 @@ player.prototype.ai = function() {
     inputs.right = 0;
     inputs.shoot = false;
 
-    
-
     //Need to decide what to aim at. Rank asteroids in order of their threat.
     //Asteroids on a collision course obviously get the highest ranking.
     //Asteroids not on a collision course are ranked somehow and gotten to if there are no current threats
@@ -437,8 +435,23 @@ player.prototype.ai = function() {
 	}
 	if (ast_ind !== false) {
 	    var threat_ind = threats.indexOf(ast_ind);
-	    if ( threat_ind> -1) { //ast is on threats list
-		if (temp_t < threat_times[threat_ind])
+	    if ( threat_ind > -1) { //ast is on threats list
+		//Have to discount the min_t of the threat_time since that calculation
+		//was done assuming both objects are points.
+		//Find the position of the asteroid at t=temp_t and walk back the value in the time it would
+		//take the asteroid to close the gap at that distance
+		var ast = asteroids[ast_ind];
+		var pos_x_ast_temp_t = ast.x + ast.dx*temp_t;
+		var pos_y_ast_temp_t = ast.y + ast.dy*temp_t;
+		var pos_x_p_temp_t = this.x + this.dx*temp_t;
+		var pos_y_p_temp_t = this.y + this.dy*temp_t;
+		var dist_x = pos_x_ast_temp_t - pos_x_p_temp_t;
+		var dist_y = pos_y_ast_temp_t - pos_y_p_temp_t;
+		var dist_temp_t = sqrt(dist_x*dist_x + dist_y*dist_y);
+		var v_p = sqrt(this.dx*this.dx + this.dy*this.dy);
+		var v_ast = sqrt(ast.dx*ast.dx + ast.dy*ast.dy);
+		var deflate = dist_temp_t/(v_p + v_ast);
+		if (temp_t - deflate < threat_times[threat_ind])
 		    asteroid_hits[ast_ind]++;
 		//else, this asteroid is going to hit the player first, so it shouldn't be treated as safe
 	    }
