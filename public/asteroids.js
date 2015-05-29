@@ -482,12 +482,21 @@ player.prototype.ai = function() {
 	    }
 	}
     }
+
+    if (DEBUG_DRAW && ast !== false) {
+	var stroke = "#ffff00";
+	ctx.beginPath();
+	ctx.strokeStyle = stroke;
+	ctx.moveTo(this.x,this.y);
+	ctx.lineTo(ast.x,ast.y);
+	ctx.stroke();
+    }
     
     //Figure out if turning right or left makes the shot better.
     //If both seem to suck, try turning towards it manually based
     //on the angle between the ship and ast.
     var check = this.shot_min_dist(ast);
-    if (ast !== false && check.min_dist > ast.min_r) {
+    if (ast !== false && check.min_dist > ast.min_r || check.t_neg) {
 	var if_turn_right = this.shot_min_dist(ast,this.max_dtheta);
 	var if_turn_left = this.shot_min_dist(ast,-this.max_dtheta);
 	if (if_turn_right.min_dist < if_turn_left.min_dist && !check.t_neg)
@@ -498,7 +507,7 @@ player.prototype.ai = function() {
     	    inputs.left = 1;	
 	}
 	else {
-    	    inputs.right = 1;
+    	    inputs.right = 1;	
 	}
     }
 
